@@ -1,6 +1,6 @@
 # 🎰 新卒ガチャ 〜入社から定年まで〜
 
-**▶ 遊ぶ / Play: https://pubeng-p.github.io/shinsotsu-gacha/**
+**▶ 遊ぶ / Play: https://YOUR-NAME.github.io/REPO/**
 
 ランダムに引いた新卒社員の会社人生を、選択肢をタップして進めるゲームです。定年まで勤め上げるか、転職するか、燃え尽きるか、異世界に召喚されるか…。1回7分ほどで遊べます。スマホのブラウザで開くだけで、インストールは不要です。
 
@@ -14,6 +14,7 @@
    - **🚪** の付いた選択肢を選ぶと退職します
 4. **📋 年度評価**:下期の後に S〜D の評価と賞与が出ます。評価が上がると昇進します。
 5. **🎬 結末**:退職、燃え尽き、定年などでゲーム終了。プレイ内容に応じた **🎖️称号**(「名古屋の申し子」「AI伝道師」「仕訳の鬼」など)がもらえます。結果はランキングに載ります。
+6. **📜 人生レポート**:経歴・主な実績・「本中AI」によるキャリア診断(6項目の評価+アドバイス)を1枚の画像にまとめます。📥ボタンで保存して、記念に持ち帰ってください。ランキングの行をタップすると、他の人のレポートも見られます。
 
 ### 3つのメーター
 
@@ -35,7 +36,7 @@
 
 **Shinsotsu Gacha** ("new-grad gacha"): roll a random new graduate joining a consulting firm, then tap through their career (half-years at first, then whole years, then two years per card, because time flies as you age). Will they retire at 65, get poached, burn out, or get summoned to another world? A run takes about 7 minutes. Just open the link in your phone's browser; nothing to install.
 
-**How to play:** tap the gacha handle to roll your grad → spin the team roulette → pick a choice on each event card (**🎲 %** choices are a timing game: tap to stop the needle in the green zone; **🚪** = leaves the company; 3 successes in a row = 🔥 bonus; ✨ SSR events are rare jackpots) → get an S–D grade and a bonus at each year-end review, and get promoted → see your ending, your 🎖️ career title, and your place on the leaderboard.
+**How to play:** tap the gacha handle to roll your grad → spin the team roulette → pick a choice on each event card (**🎲 %** choices are a timing game: tap to stop the needle in the green zone; **🚪** = leaves the company; 3 successes in a row = 🔥 bonus; ✨ SSR events are rare jackpots) → get an S–D grade and a bonus at each year-end review, and get promoted → see your ending, your 🎖️ career title, and your place on the leaderboard → open your **📜 life report**: one image with your career highlights and a (totally fake) AI career review, grades and advice. Save it and take it home! Tap any leaderboard row to see other players' reports.
 
 **Meters:** keep 🔥 motivation and ⭐ rating up, and 😰 stress down (100 = burnout).
 

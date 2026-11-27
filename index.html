@@ -14,10 +14,10 @@
    ===================================================================== */
 const CONFIG = {
   // Google Apps Script web-app URL (see README). Leave '' = leaderboard on this device only.
-  leaderboardUrl: 'https://script.google.com/macros/s/AKfycbwIjYCl_5f8o6XwDto5PFzo_sr6ZfAq2IC6ON-yTJHRHN-R9qtj06ZTc2Xho1R41exIgw/exec',
+  leaderboardUrl: '',
 
   // Change this for each event to start a fresh leaderboard (old runs stay in the sheet).
-  tripId: 'company-trip-2026-test',
+  tripId: 'company-trip-2026',
 
   retireAge: 65,
 
@@ -54,6 +54,9 @@ const CONFIG = {
   ],
 
   boss: { ja: '部長', en: 'the Boss' },
+
+  // Name of the (fake) AI that writes the career review in the life report
+  aiName: { ja: '本中AI', en: 'Motonaka AI' },
 
   // The boss's famous catchphrases
   catchphrases: [
@@ -226,6 +229,15 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appeara
 .ttl-lb{font-size:12px;font-weight:900;color:var(--muted)}
 .ttl{font-size:24px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
 .ttl-ic{font-size:34px}
+.report-ov{align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px}
+.report-box{width:100%;max-width:460px;display:grid;gap:10px;padding-bottom:calc(30px + env(safe-area-inset-bottom));margin:0 auto}
+.rp-bar{display:flex;align-items:center;justify-content:space-between;color:#fff;font-size:18px}
+.rp-bar .btn{color:var(--ink)}
+.rp-img-wrap{overflow:hidden;padding:0;min-height:200px;display:flex;align-items:center;justify-content:center}
+.rp-img{display:block;width:100%;height:auto;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
+.report-ov .status{color:#fff}
+.lbi.tap{cursor:pointer}
+.lbi.tap:active{transform:translateY(3px);box-shadow:0 2px 0 var(--ink)}
 
 /* outcome */
 .outcome{padding:12px;display:grid;gap:10px;animation:popIn .35s cubic-bezier(.3,1.4,.6,1)}
@@ -577,6 +589,13 @@ const UI = {
   streak: { ja: '連続成功ボーナス!', en: 'in a row! Bonus!' },
   ttl: { ja: '称号', en: 'Title' },
   ssr: { ja: 'SSRイベント', en: 'SSR event' },
+  report: { ja: '人生レポート', en: 'Life report' },
+  reportBtn: { ja: '人生レポートを見る(画像で保存)', en: 'Life report (save as image)' },
+  making: { ja: 'レポート作成中…', en: 'Making your report…' },
+  saveImg: { ja: '画像を保存', en: 'Save image' },
+  longPress: { ja: '画像を長押ししても保存できます', en: 'You can also long-press the image to save it' },
+  close: { ja: '閉じる', en: 'Close' },
+  tapRow: { ja: '📜 タップで人生レポート', en: '📜 Tap a row to see the life report' },
 };
 
 const ICON = { tech: '💻', biz: '📊', comm: '💬', stamina: '💪', luck: '🍀', mot: '🔥', stress: '😰', rep: '⭐', rev: '🏢', sal: '💴', pay: '👛', kids: '👶', married: '💍' };
@@ -1066,6 +1085,68 @@ const TITLES = [
   { id: 'normal', icon: '🙂', ja: 'ふつうの会社員', en: 'Perfectly Normal Employee', test: () => true },
 ];
 const TITLE_MAP = Object.fromEntries(TITLES.map(x => [x.id, x]));
+
+/* ============================ LIFE REPORT: "AI" career review texts ============================
+   Not a real AI: just rules. {n} = a number from your run. */
+const AI_CRIT = {
+  perf: { icon: '💼', ja: '仕事の成果', en: 'Performance' },
+  bal:  { icon: '🧘', ja: 'ワークライフバランス', en: 'Work-life balance' },
+  chal: { icon: '🎲', ja: 'チャレンジ精神', en: 'Risk-taking' },
+  ppl:  { icon: '🤝', ja: '人間関係', en: 'Relationships' },
+  ai:   { icon: '🤖', ja: 'AI活用度', en: 'AI adoption' },
+  hap:  { icon: '😊', ja: '幸福度', en: 'Happiness' },
+};
+const AI_TXT = {
+  op: {
+    S: { ja: ['文句なしの伝説的キャリア。社史の1ページ目はあなたのものです。', '完璧すぎて少し怖いキャリアでした。何者ですか?'],
+         en: ['A legendary career. Page one of the company history book is yours.', 'A career so perfect it is slightly scary. Who are you?'] },
+    A: { ja: ['とても優秀なキャリアでした。後輩たちの憧れになるでしょう。', '安定感と爆発力を兼ね備えた、頼れるキャリアでした。'],
+         en: ['An excellent career. Juniors will look up to you.', 'Steady and explosive at the same time. A great career.'] },
+    B: { ja: ['堅実で、胸を張れるキャリアでした。', '良いときも悪いときもありましたが、よく頑張りました。'],
+         en: ['A solid career you can be proud of.', 'Ups and downs, but you gave it your best.'] },
+    C: { ja: ['波乱万丈なキャリアでした。それもまた人生です。', '山あり谷ありの、ドラマのようなキャリアでした。'],
+         en: ["A rollercoaster of a career. That's life.", 'More plot twists than a TV drama.'] },
+    D: { ja: ['…非常に個性的なキャリアでした。データとして大変興味深いです。', '前衛的すぎて、AIの理解が追いつきませんでした。'],
+         en: ['…A very unique career. Fascinating data.', 'Too avant-garde for this AI to fully understand.'] },
+  },
+  end: {
+    retire:      { ja: '定年まで走り抜けたこと自体が、最大の実績です。', en: 'Making it all the way to retirement is the real achievement.' },
+    burnout:     { ja: '最後は燃え尽きてしまいました。キャリアはマラソン、ペース配分が大切です。', en: 'You burned out in the end. A career is a marathon, not a sprint.' },
+    poached:     { ja: '転職先でも、ここで鍛えた仕訳力はきっと通用します。', en: 'Your journal-entry skills will serve you well at the new place.' },
+    startup:     { ja: '起業という大きな賭けに出た勇気に拍手。', en: 'Applause for betting big on a startup.' },
+    lottery:     { ja: '強運もまた実力。でも宝くじは資産運用ではありません。', en: 'Luck is a skill too. But lottery tickets are not an investment strategy.' },
+    isekai:      { ja: '異世界でもOracle ERPの導入、頑張ってください。', en: 'Good luck implementing Oracle ERP in another world.' },
+    quit:        { ja: 'やる気が尽きたときは、立ち止まる勇気も必要です。', en: 'When motivation runs out, it takes courage to stop and reset.' },
+    letgo:       { ja: 'ラーメン屋でも、原価計算の知識はきっと役に立ちます。', en: 'Your cost-accounting skills will come in handy at the ramen shop.' },
+    abroad:      { ja: '家族を選んだ決断は、どんな昇進よりも尊いものです。', en: 'Choosing your family was worth more than any promotion.' },
+    streamer:    { ja: '登録者100万人。次は会計系配信者の頂点を目指しましょう。', en: '1M subscribers. Next stop: the top accounting streamer.' },
+    earlyRetire: { ja: '早めのセカンドライフ。いちばん賢い選択だったかもしれません。', en: 'An early second life. Possibly the smartest move of all.' },
+  },
+  tr: {
+    night:  { ja: '徹夜は{n}回。その情熱は本物ですが、睡眠もKPIに入れましょう。', en: '{n} all-nighters. Admirable passion, but sleep is a KPI too.' },
+    drink:  { ja: '飲み会・会食は{n}回。肝臓にも年度評価をつけてあげてください。', en: '{n} drinking parties. Please give your liver an annual review too.' },
+    ai:     { ja: 'AI関連の案件に{n}回関わったAIネイティブ。本AIも誇りに思います。', en: 'An AI native with {n} AI projects. This AI is proud of you.' },
+    nagoya: { ja: '名古屋の商社との縁は{n}回。味噌カツの食べすぎには注意しましょう。', en: '{n} encounters with the Nagoya trading house. Watch the miso katsu intake.' },
+    acct:   { ja: '会計案件を{n}回こなした仕訳の職人。借方と貸方はいつもあなたの味方です。', en: '{n} accounting battles fought. Debits and credits are on your side.' },
+    gold:   { ja: 'SSRイベントを{n}回引き当てた強運の持ち主です。', en: 'Pulled {n} SSR events. Your luck is suspicious.' },
+    streak: { ja: '最大{n}連続成功。ここ一番の集中力はピカイチです。', en: 'A best streak of {n} wins in a row. Clutch focus.' },
+    risky:  { ja: 'サイコロを振った回数は{n}回。挑戦を恐れない姿勢が光りました。', en: 'You rolled the dice {n} times. Fearless.' },
+    safe:   { ja: '安全策を選んだ回数は{n}回。石橋を叩いて渡るタイプですね。', en: 'You took the safe option {n} times. You test the bridge before crossing.' },
+    family: { ja: '家族との時間を大切にした人生。最高のプロジェクトは家庭でした。', en: 'Family came first. Your best project was at home.' },
+    boomer: { ja: '一度会社を離れて戻ってきた経験は、どんな研修よりも価値があったはずです。', en: 'Leaving and coming back taught you more than any training course.' },
+    relief: { ja: '休むべきときに休める人でした({n}回)。それも立派なスキルです。', en: 'You knew when to rest ({n} times). That is a real skill.' },
+    s80:    { ja: 'ストレス80超えの年が{n}回。よく生き延びましたね…。', en: '{n} years above 80 stress. Honestly impressive that you survived.' },
+    fail:   { ja: '失敗は{n}回。でも失敗の数だけ、学習データが増えました。', en: '{n} failures. Every one of them was valuable training data.' },
+  },
+  adv: {
+    perf: { ja: '小さな成功を積み重ねましょう。売上は一日にしてならず。', en: 'Stack up small wins. Revenue is not built in a day.' },
+    bal:  { ja: '有給休暇は使うためにあります。', en: 'Paid leave exists to be used.' },
+    chal: { ja: 'たまにはサイコロを振ってみましょう。失敗はただの学習データです。', en: 'Roll the dice once in a while. Failure is just training data.' },
+    ppl:  { ja: 'たまには同期とランチへ。人脈は最強の資産です。', en: 'Grab lunch with your peers sometimes. Your network is your best asset.' },
+    ai:   { ja: 'まずは議事録をAIに任せてみましょう。世界が変わります。', en: 'Start by letting AI take your meeting notes. It changes everything.' },
+    hap:  { ja: '自分の機嫌は自分で取りましょう。おいしいものを食べるのも仕事のうちです。', en: 'Look after your own mood. Good food is part of the job.' },
+  },
+};
 /* ============================ ENGINE ============================ */
 let rnd = () => Math.random();
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1137,7 +1218,7 @@ function newState(grad, module) {
     stressMul: pers.stressMul || 1, repMul: pers.repMul || 1, night: pers.night || 1,
     lv: 0, yrsLv: 0, peak: 0, peakYear: 0,
     sal: LEVELS[0].sal + ri(-10, 20), revenue: 0, yearRev: 0, lifetime: 0, happySum: 0,
-    married: false, kids: 0, used: {}, hist: [], tok: {}, cnt: {}, streak: 0, maxStreak: 0, span: 0.5, fxMul: 1,
+    married: false, kids: 0, used: {}, hist: [], tok: {}, cnt: {}, streak: 0, maxStreak: 0, span: 0.5, fxMul: 1, log: [], stressSum: 0,
   };
   return S;
 }
@@ -1248,6 +1329,7 @@ function promote(S, to) {
   S.rep = clamp(S.rep - 20, 35, 100);
   S.mot = clamp(S.mot + 10, 0, 100);
   if (to > S.peak) { S.peak = to; S.peakYear = S.done; }
+  if (S.log) S.log.push({ a: S.age, k: 'promo', lv: to, ic: to === 7 ? '👑' : '⬆️', t: { ja: `${LEVELS[to].ja}に昇進`, en: `Promoted to ${LEVELS[to].en}` } });
   return { from, to, oldSal, newSal: S.sal };
 }
 
@@ -1304,10 +1386,12 @@ function endYear(S, icon) {
   S.mot = clamp(Math.round(S.mot + (55 - S.mot) * 0.12 - (S.pers === 'ambitious' && S.yrsLv >= 5 ? 4 : 0)), 0, 100);
   if (S.age >= 40) S.stamina = clamp(S.stamina - (S.age >= 55 ? 2 : 1), 0, 99);
   S.sal = Math.round(S.sal + Math.max(0, LEVELS[S.lv].sal * 0.015 + (S.rep - 50) / 6));
-  const grade = perf >= .33 ? 'S' : perf >= .13 ? 'A' : perf >= -.07 ? 'B' : perf >= -.27 ? 'C' : 'D';
+  const gp = perf - S.lv * 0.06 - (S.yrsLv >= 3 ? 0.05 : 0);   // judged against what your title expects
+  const grade = gp >= .33 ? 'S' : gp >= .13 ? 'A' : gp >= -.07 ? 'B' : gp >= -.27 ? 'C' : 'D';
   const bonus = Math.round(S.sal * { S: .45, A: .33, B: .22, C: .12, D: .04 }[grade]);
   S.lifetime += S.sal + bonus;
   S.happySum += S.mot;
+  S.stressSum += S.stress; if (S.stress >= 80) S.cnt.s80 = (S.cnt.s80 || 0) + 1; if (grade === 'S') S.cnt.gradeS = (S.cnt.gradeS || 0) + 1;
   S.done += 1; S.yrsLv += 1;
   S.hist.push({ age: S.age, lv: S.lv, rev: S.yearRev, sal: S.sal, mot: Math.round(S.mot), icon: icon || '📅' });
 
@@ -1334,6 +1418,7 @@ function tryBoomerang(S, endId) {
   else return null;
   const yrs = ri(1, 3);
   S.boomer = { kind: endId, yrs, from: S.age, tok: { ...S.tok } };
+  S.log.push({ a: S.age, k: 'boomer', ic: '🪃', t: endId === 'startup' ? { ja: `起業して撤退…${yrs}年後に出戻り入社`, en: `Startup folded… back after ${yrs} yrs` } : { ja: `転職したが合わず…${yrs}年後に出戻り入社`, en: `Left for a rival… back after ${yrs} yrs` } });
   S.hist.push({ age: S.age, lv: S.lv, rev: 0, sal: 0, mot: Math.round(S.mot), icon: '🪃', away: true });
   S.age += yrs;
   S.rep = 45; S.yrsLv = 0;
@@ -1342,6 +1427,109 @@ function tryBoomerang(S, endId) {
   else { S.tech = clamp(S.tech + 6, 0, 99); S.biz = clamp(S.biz + 4, 0, 99); }
   delete S.startupWin;
   return S.boomer;
+}
+
+/* ---------- text & money helpers that work in both languages (used by the life report) ---------- */
+function fillL(o, S, lang) {
+  const str = typeof o === 'string' ? o : (o ? (o[lang] ?? o.en ?? '') : '');
+  return String(str).replace(/\{(\w+)\}/g, (m, k) => { const v = (S.tok && S.tok[k]) || (k === 'company' ? CONFIG.company : null); return v ? (v[lang] ?? v.en) : m; });
+}
+const both = (o, S) => ({ ja: fillL(o, S, 'ja'), en: fillL(o, S, 'en') });
+const joinT = (a, b) => ({ ja: `${a.ja}→${b.ja}`, en: `${a.en} → ${b.en}` });
+function moneyL(man, lang) {
+  const v = Math.round(man);
+  if (lang === 'ja') {
+    if (Math.abs(v) >= 10000) return (v / 10000).toFixed(Math.abs(v) >= 1000000 ? 0 : 1).replace(/\.0$/, '') + '億円';
+    return v.toLocaleString('ja-JP') + '万円';
+  }
+  const yen = v * 10000;
+  if (Math.abs(yen) >= 1e9) return '¥' + (yen / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
+  if (Math.abs(yen) >= 1e8) return '¥' + Math.round(yen / 1e6) + 'M';
+  if (Math.abs(yen) >= 1e6) return '¥' + (yen / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+  return '¥' + Math.round(yen / 1e3) + 'K';
+}
+
+/* ---------- life log: what happened, for the life report ---------- */
+const NOTABLE = new Set(['lottowin', 'streamhit', 'ceo', 'award', 'anniv', 'grandkid', 'nagoyaOrder', 'aiOcr', 'magic', 'reunion', 'faction']);
+function logChoice(S, ev, ch, res) {
+  const c = S.cnt, a = S.age, f = res.fx || {};
+  if (ch.check) { c.checks = (c.checks || 0) + 1; if (res.success) c.wins = (c.wins || 0) + 1; else c.fails = (c.fails || 0) + 1; }
+  else if (!ch.run && !ch.end) c.safe = (c.safe || 0) + 1;
+  if ((f.stress || 0) <= -8) c.relief = (c.relief || 0) + 1;
+  if ((f.comm || 0) > 0) c.social = (c.social || 0) + 1;
+  const title = both(ev.title, S);
+  if (ev.gold) S.log.push({ a, id: ev.id, k: 'gold', ic: '✨', t: title });
+  else if (NOTABLE.has(ev.id)) S.log.push({ a, id: ev.id, k: 'ev', ic: ch.icon, t: joinT(title, res.text ? both(res.text, S) : both(ch.label, S)) });
+  else if (res.success === true) { const w = (f.rev || 0) / 150 + (f.rep || 0); if (w >= 12) S.log.push({ a, id: ev.id, k: 'win', ic: ch.icon, w, t: joinT(title, res.text ? both(res.text, S) : { ja: '成功!', en: 'Success!' }) }); }
+  else if (res.success === false) { const w = -(f.rep || 0) + (f.stress || 0); if (w >= 12) S.log.push({ a, id: ev.id, k: 'fail', ic: '💥', w, t: joinT(title, res.text ? both(res.text, S) : { ja: '失敗…', en: 'Failed…' }) }); }
+  if (f.married) S.log.push({ a, k: 'married', ic: '💍', t: { ja: '結婚!', en: 'Got married!' } });
+  if (f.kids && ev.id === 'baby') S.log.push({ a, k: 'kid', ic: '👶', t: { ja: '家族が増えた!', en: 'A new family member!' } });
+}
+
+/* ---------- life report: scores, highlights, rule-based "AI" comment ---------- */
+function hashStr(s) { let h = 2166136261; for (const ch of String(s)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng32(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const CRIT_KEYS = ['perf', 'bal', 'chal', 'ppl', 'ai', 'hap'];
+const overallOf = (sc) => CRIT_KEYS.reduce((a, k) => a + (sc[k] || 0), 0) / CRIT_KEYS.length;
+function letter(v, plus) {
+  const g = v >= 88 ? 'S' : v >= 72 ? 'A' : v >= 56 ? 'B' : v >= 40 ? 'C' : 'D';
+  if (!plus || g === 'S' || g === 'D') return g;
+  return v - { A: 72, B: 56, C: 40 }[g] >= 8 ? g + '+' : g;
+}
+function lifeScores(S) {
+  const c = S.cnt, yrs = S.done;
+  const avgStress = yrs ? S.stressSum / yrs : S.stress, revPY = yrs ? S.revenue / yrs : 0;
+  const risk = (c.checks || 0) / Math.max(1, (c.checks || 0) + (c.safe || 0)), win = (c.wins || 0) / Math.max(1, c.checks || 0);
+  const sc = {
+    perf: 5 + revPY / 400 + S.peak * 7,
+    bal: 115 - avgStress * 1.3 + (c.relief || 0) * 4 + (S.married ? 6 : 0) + Math.min(S.kids, 3) * 3 - (c.s80 || 0) * 3,
+    chal: risk * 80 + win * 20 + Math.min(S.maxStreak || 0, 8) * 2.5,
+    ppl: 25 + S.comm * .25 + (c.social || 0) * 3 + (c.drink || 0) * 6 + (S.married ? 6 : 0),
+    ai: 10 + (c.ai || 0) * 13 + (S.tech >= 75 ? 10 : 0),
+    hap: ((yrs ? S.happySum / yrs : S.mot) - 50) * 2.2,
+  };
+  const short = yrs < 5 ? 0.5 + yrs / 10 : 1;   // a 2-year career can't max anything out
+  for (const k of CRIT_KEYS) sc[k] = Math.round(clamp(sc[k] * short, 0, 100));
+  return sc;
+}
+function aiComment(S, endId, sc, seed) {
+  const r = rng32(hashStr(seed)), c = S.cnt;
+  const parts = [['op', letter(overallOf(sc)), Math.floor(r() * 2)]];
+  if (AI_TXT.end[endId]) parts.push(['end', endId]);
+  const risk = (c.checks || 0) / Math.max(1, (c.checks || 0) + (c.safe || 0));
+  const cand = [['night', c.night || 0, 2], ['drink', c.drink || 0, 2], ['ai', c.ai || 0, 5], ['nagoya', c.nagoya || 0, 3], ['acct', c.acct || 0, 5],
+    ['gold', c.gold || 0, 1], ['streak', S.maxStreak || 0, 9], [risk >= .5 ? 'risky' : 'safe', risk >= .5 ? (c.checks || 0) : (c.safe || 0), risk >= .5 ? 18 : 20],
+    ['family', (S.married ? 1 : 0) + S.kids, 1], ['boomer', S.boomer ? 1 : 0, 1], ['relief', c.relief || 0, 3], ['s80', c.s80 || 0, 5], ['fail', c.fails || 0, 7]];
+  cand.filter(x => x[1] >= x[2]).map(x => [x[0], x[1], x[1] / x[2] + r() * .4]).sort((a, b) => b[2] - a[2]).slice(0, 2).forEach(x => parts.push(['tr', x[0], x[1]]));
+  parts.push(['adv', CRIT_KEYS.slice().sort((a, b) => sc[a] - sc[b])[0]]);
+  return parts;
+}
+function buildReport(S, endId, run) {
+  const E = ENDINGS[endId], v = (endId === 'startup' && !S.startupWin && E.alt) ? E.alt : E;
+  const hist = S.hist.filter(h => !h.away);
+  const cands = [{ a: S.age0, k: 'join', ic: '🏢', p: 100, t: { ja: `${CONFIG.company.ja}に入社(${MODULES[S.module].ja}チーム)`, en: `Joined ${CONFIG.company.en} (${MODULES[S.module].en} team)` } }];
+  const pri = e => e.k === 'promo' ? (e.lv >= 7 ? 95 : e.lv >= 6 ? 80 : e.lv >= 5 ? 60 : e.lv >= 3 ? 45 : 20)
+    : ({ gold: 85, boomer: 75, married: 70, ev: 65, kid: 50, win: 30 + (e.w || 0), fail: 28 + (e.w || 0) / 2 })[e.k] || 10;
+  let fails = 0, wins = 0;
+  const seen = new Set();
+  for (const e of S.log.slice().sort((x, y) => pri(y) - pri(x))) {
+    if (e.id) { if (seen.has(e.id)) continue; seen.add(e.id); }
+    if (e.k === 'fail' && fails++ >= 1) continue;
+    if (e.k === 'win' && wins++ >= 3) continue;
+    cands.push({ ...e, p: pri(e) });
+  }
+  if (hist.length) { const b = hist.reduce((m, h) => h.rev > m.rev ? h : m); cands.push({ a: b.age, k: 'best', ic: '📈', p: 40, t: { ja: `最高の1年:売上貢献 ${moneyL(b.rev, 'ja')}`, en: `Best year: ${moneyL(b.rev, 'en')} revenue` } }); }
+  const top = cands.sort((x, y) => y.p - x.p).slice(0, 8).sort((x, y) => x.a - y.a || (x.k === 'join' ? -1 : y.k === 'join' ? 1 : 0));
+  top.push({ a: S.age, ic: E.icon, t: both(v.title, S) });
+  const sc = lifeScores(S);
+  return {
+    v: 1, id: run.id, p: run.player, d: new Date().toISOString().slice(0, 10),
+    nm: S.name, nat: S.nat, g: S.g, a0: S.age0, a1: S.age, deg: S.grad.deg, major: S.major, pers: S.pers, rar: S.grad.rarity, mod: S.module,
+    end: endId, endT: both(v.title, S), endS: both(v.sub, S), ttl: careerTitle(S, endId).id,
+    yrs: S.done, rev: Math.round(S.revenue), peak: S.peak, ptY: S.peakYear, life: Math.round(S.lifetime), happy: happyScore(S), gS: S.cnt.gradeS || 0,
+    h: hist.map(h => [h.age, h.lv, Math.round(h.rev)]), hl: top.map(e => [e.a, e.ic, e.t.ja, e.t.en]),
+    sc, cm: aiComment(S, endId, sc, run.id), look: { ...S.look, age: S.age },
+  };
 }
 
 /* ---------- final record ---------- */
@@ -1358,6 +1546,11 @@ function makeRun(S, endId, player) {
     happy: happyScore(S), ending: endId,
     look: JSON.stringify({ ...S.look, age: S.age, mood: (ENDINGS[endId] || {}).good ? 'happy' : 'neutral', ttl: careerTitle(S, endId).id }),
   };
+}
+function makeRunWithReport(S, endId, player) {
+  const run = makeRun(S, endId, player);
+  try { run.sum = JSON.stringify(buildReport(S, endId, run)); } catch (e) { run.sum = ''; }
+  return run;
 }
 if (typeof module !== 'undefined') module.exports = {};
 /* ============================ ART: CORE ============================ */
@@ -1961,6 +2154,281 @@ function sceneSVG(key, S, o = {}) {
   const fn = SCN[key] || SCN.office;
   return `<svg class="scene-svg" viewBox="0 0 360 220" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">${fn(a, S, o)}${o.deco && DECO[o.deco] ? DECO[o.deco]() : ''}</svg>`;
 }
+/* ============================ LIFE REPORT: drawn on a canvas → PNG ============================ */
+const RP_FONT = '"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",Meiryo,system-ui,sans-serif';
+const rpF = (size, w = 900) => `${w} ${size}px ${RP_FONT}`;
+const RAR_BG = { N: ['#f8f9fa', '#dee2e6'], R: ['#e7f5ff', '#a5d8ff'], SR: ['#f3f0ff', '#b197fc'], SSR: ['#fff9db', '#ffd43b'], UR: ['#ffc9c9', '#d0ebff'] };
+const GRADE_BG = { S: '#ffd43b', A: '#ff8787', B: '#74c0fc', C: '#ced4da', D: '#b197fc' };
+
+function svgImg(svg, w, h) {
+  const s = svg.replace(/<svg([^>]*)>/, (m, at) => {
+    at = at.replace(/\s(width|height|class|style)="[^"]*"/g, '');
+    if (!/xmlns=/.test(at)) at += ' xmlns="http://www.w3.org/2000/svg"';
+    return `<svg${at} width="${w}" height="${h}">`;
+  });
+  return new Promise(res => {
+    const img = new Image(); img.onload = () => res(img); img.onerror = () => res(null);
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
+  });
+}
+function rrect(x, X, Y, w, h, r) { x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + w, Y, X + w, Y + h, r); x.arcTo(X + w, Y + h, X, Y + h, r); x.arcTo(X, Y + h, X, Y, r); x.arcTo(X, Y, X + w, Y, r); x.closePath(); }
+function cardBox(x, X, Y, w, h, fill = '#ffffff', r = 34) {
+  rrect(x, X, Y + 10, w, h, r); x.fillStyle = OL; x.fill();
+  rrect(x, X, Y, w, h, r); x.fillStyle = fill; x.fill(); x.lineWidth = 7; x.strokeStyle = OL; x.stroke();
+}
+function txt(x, s, X, Y, size, color = OL, align = 'left', weight = 900) { x.font = rpF(size, weight); x.fillStyle = color; x.textAlign = align; x.textBaseline = 'alphabetic'; x.fillText(s, X, Y); }
+function fitTxt(x, s, X, Y, size, maxW, color = OL, align = 'left', weight = 900) {
+  let sz = size; x.font = rpF(sz, weight);
+  while (x.measureText(s).width > maxW && sz > 16) { sz -= 2; x.font = rpF(sz, weight); }
+  txt(x, s, X, Y, sz, color, align, weight); return sz;
+}
+function outlined(x, s, X, Y, size, fill, stroke, lw, align = 'center') {
+  x.font = rpF(size); x.textAlign = align; x.lineJoin = 'round'; x.lineWidth = lw; x.strokeStyle = stroke; x.strokeText(s, X, Y); x.fillStyle = fill; x.fillText(s, X, Y);
+}
+/* line wrapping that works for Japanese (per character) and English (per word) */
+function wrapLines(x, s, maxW, size, weight = 700, maxLines = 99) {
+  x.font = rpF(size, weight);
+  const toks = String(s).match(/[　-ヿ㐀-鿿＀-￯]|[^\s　-ヿ㐀-鿿＀-￯]+\s*|\s+/g) || [];
+  const lines = []; let cur = '';
+  for (const t of toks) {
+    if (/^[、。!?」』)ー…ー・,.!?]/.test(t)) { cur += t; continue; }   // no line may start with punctuation
+    if (x.measureText(cur + t).width > maxW && cur.trim()) { lines.push(cur.trimEnd()); cur = t.trimStart(); }
+    else cur += t;
+  }
+  if (cur.trim()) lines.push(cur.trimEnd());
+  if (lines.length > maxLines) { const keep = lines.slice(0, maxLines); keep[maxLines - 1] = keep[maxLines - 1].replace(/.$/, '…'); return keep; }
+  return lines;
+}
+function pill(x, s, X, Y, size, bg, h = size * 1.6, align = 'left') {
+  x.font = rpF(size); const w = x.measureText(s).width + size * 1.1;
+  const X0 = align === 'center' ? X - w / 2 : align === 'right' ? X - w : X;
+  rrect(x, X0, Y, w, h, h / 2); x.fillStyle = bg; x.fill(); x.lineWidth = 4; x.strokeStyle = OL; x.stroke();
+  txt(x, s, X0 + w / 2, Y + h / 2 + size * .36, size, OL, 'center'); return w;
+}
+function radar(x, cx, cy, r, sc) {
+  const n = CRIT_KEYS.length, pt = (i, rr) => [cx + rr * Math.sin(i * 2 * Math.PI / n), cy - rr * Math.cos(i * 2 * Math.PI / n)];
+  for (const f of [.25, .5, .75, 1]) {
+    x.beginPath(); CRIT_KEYS.forEach((k, i) => { const [px, py] = pt(i, r * f); i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.closePath();
+    x.strokeStyle = f === 1 ? OL : '#dee2e6'; x.lineWidth = f === 1 ? 4 : 2; x.stroke();
+  }
+  CRIT_KEYS.forEach((k, i) => { const [px, py] = pt(i, r); x.beginPath(); x.moveTo(cx, cy); x.lineTo(px, py); x.strokeStyle = '#dee2e6'; x.lineWidth = 2; x.stroke(); });
+  x.beginPath(); CRIT_KEYS.forEach((k, i) => { const [px, py] = pt(i, r * Math.max(.04, sc[k] / 100)); i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.closePath();
+  x.fillStyle = 'rgba(255,93,115,.32)'; x.fill(); x.strokeStyle = '#ff5d73'; x.lineWidth = 6; x.lineJoin = 'round'; x.stroke();
+  CRIT_KEYS.forEach((k, i) => { const [px, py] = pt(i, r * Math.max(.04, sc[k] / 100)); x.beginPath(); x.arc(px, py, 9, 0, 7); x.fillStyle = '#ff5d73'; x.fill(); x.lineWidth = 3; x.strokeStyle = '#fff'; x.stroke(); });
+  CRIT_KEYS.forEach((k, i) => { const [px, py] = pt(i, r + 44); txt(x, AI_CRIT[k].icon, px, py + 16, 42, OL, 'center'); });
+}
+function aiCommentText(cm, lang) {
+  return (cm || []).map(([k, a, b]) => {
+    if (k === 'op') return ((AI_TXT.op[a] || AI_TXT.op.B)[lang] || [])[b || 0];
+    if (k === 'end') return (AI_TXT.end[a] || {})[lang];
+    if (k === 'tr') return ((AI_TXT.tr[a] || {})[lang] || '').replace('{n}', b);
+    return null;
+  }).filter(Boolean).join(lang === 'ja' ? '' : ' ');
+}
+
+/* minimal report for runs saved before reports existed */
+function legacyReport(run) {
+  return { v: 0, id: run.id, p: run.player, d: String(run.ts || '').slice(0, 10), nm: { ja: run.gradJa, en: run.gradEn }, nat: run.nat, g: run.gender,
+    a0: +run.startAge, a1: +run.endAge, end: run.ending, ttl: run.look && run.look.ttl, yrs: run.years, rev: run.revenue, peak: run.peak, ptY: run.yearsToPeak,
+    happy: run.happy, look: run.look, rar: 'N' };
+}
+
+async function renderReport(R) {
+  const lang = L, W = 1080, P = 44, CW = W - P * 2;
+  const T2 = (o) => o ? (o[lang] ?? o.en ?? o.ja ?? '') : '';
+  const ageL = (a) => lang === 'ja' ? `${a}歳` : `${a}`;
+  const yrsL = (n) => lang === 'ja' ? `在籍${n}年` : `${n} yrs at the company`;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = 5600;
+  const x = cv.getContext('2d');
+  const E = ENDINGS[R.end] || ENDINGS.retire, TT = TITLE_MAP[R.ttl] || TITLES[TITLES.length - 1];
+  const acc = R.end === 'retire' ? (R.peak === 7 ? 'crown bouquet' : 'bouquet') : (R.peak === 7 ? 'crown' : '');
+  const [avImg, flagImg] = await Promise.all([
+    R.look && R.look.skin ? svgImg(avatarSVG(R.look, { age: R.a1, mood: 'happy', acc }), 300, 396) : Promise.resolve(null),
+    NATION[R.nat] ? svgImg(flagSVG(R.nat, 40), 66, 44) : Promise.resolve(null),
+  ]);
+  // background
+  x.fillStyle = '#fff6e9'; x.fillRect(0, 0, W, cv.height);
+  x.fillStyle = '#ffe0bd'; for (let yy = 18; yy < cv.height; yy += 36) for (let xx = 18; xx < W; xx += 36) { x.beginPath(); x.arc(xx, yy, 3, 0, 7); x.fill(); }
+  let y = 36;
+
+  // 1 — header
+  cardBox(x, P, y, CW, 196, '#ff5d73');
+  outlined(x, lang === 'ja' ? '新卒ガチャ 人生レポート' : 'Shinsotsu Gacha · Life Report', W / 2, y + 96, lang === 'ja' ? 64 : 56, '#ffffff', OL, 12);
+  fitTxt(x, [tt(CONFIG.company), R.p ? '👤 ' + R.p : '', R.d].filter(Boolean).join('  ·  '), W / 2, y + 156, 32, CW - 60, '#ffffff', 'center');
+  y += 196 + 40;
+
+  // 2 — who
+  cardBox(x, P, y, CW, 400);
+  const bx = P + 34, by = y + 40, bw = 300, bh = 320, rb = RAR_BG[R.rar] || RAR_BG.N;
+  x.save(); rrect(x, bx, by, bw, bh, 28); x.clip();
+  const g = x.createLinearGradient(0, by, 0, by + bh); g.addColorStop(0, rb[0]); g.addColorStop(1, rb[1]); x.fillStyle = g; x.fillRect(bx, by, bw, bh);
+  if (avImg) x.drawImage(avImg, bx, by + 8, 300, 396);
+  x.restore(); rrect(x, bx, by, bw, bh, 28); x.lineWidth = 6; x.strokeStyle = OL; x.stroke();
+  if (R.rar) pill(x, R.rar, bx + 14, by + 14, 30, (RARITIES.find(r => r.id === R.rar) || RARITIES[0]).color);
+  const X = P + 370, MW = CW - 370 - 30;
+  fitTxt(x, T2(R.nm), X, y + 104, 60, MW);
+  if (flagImg) { x.drawImage(flagImg, X, y + 132, 66, 44); x.lineWidth = 2; x.strokeStyle = 'rgba(0,0,0,.25)'; x.strokeRect(X, y + 132, 66, 44); }
+  txt(x, `${T2(NATION[R.nat]) || ''}  ${R.g === 'f' ? '♀' : '♂'}`, X + (flagImg ? 84 : 0), y + 167, 36);
+  fitTxt(x, lang === 'ja' ? `${R.a0}歳 → ${R.a1}歳 · ${yrsL(R.yrs)}` : `Age ${R.a0} → ${R.a1} · ${yrsL(R.yrs)}`, X, y + 232, 34, MW, '#495057');
+  // chips
+  const mj = MAJORS.find(m => m.id === R.major), ps = PERSONALITIES.find(p => p.id === R.pers), md = MODULES[R.mod], dg = DEGREES.find(d => d.id === R.deg);
+  let cx = X, cy = y + 262;
+  for (const c of [mj && `${mj.icon} ${T2(mj)}${dg ? '・' + T2(dg) : ''}`, ps && `${ps.icon} ${T2(ps)}`, md && `${md.icon} ${T2(md)}`].filter(Boolean)) {
+    x.font = rpF(28); const w = x.measureText(c).width + 32;
+    if (cx + w > X + MW) { cx = X; cy += 56; }
+    pill(x, c, cx, cy, 28, '#ffffff', 46); cx += w + 12;
+  }
+  y += 400 + 40;
+
+  // 3 — ending + title
+  cardBox(x, P, y, CW, 250, '#fffdf2');
+  fitTxt(x, `${E.icon} ${T2(R.endT) || tt(E.title)}`, W / 2, y + 84, 54, CW - 60, OL, 'center');
+  fitTxt(x, T2(R.endS) || '', W / 2, y + 134, 32, CW - 60, '#6c727f', 'center', 800);
+  x.font = rpF(40); const ts = `🎖️ ${lang === 'ja' ? '称号' : 'Title'}:${TT.icon} ${T2(TT)}`;
+  const tw = Math.min(CW - 80, x.measureText(ts).width + 60);
+  rrect(x, W / 2 - tw / 2, y + 160, tw, 66, 33); x.fillStyle = '#ffe066'; x.fill(); x.lineWidth = 5; x.strokeStyle = OL; x.stroke();
+  fitTxt(x, ts, W / 2, y + 207, 40, tw - 40, OL, 'center');
+  y += 250 + 40;
+
+  // 4 — stat tiles
+  const tiles = [
+    ['🕰️', lang === 'ja' ? '在籍年数' : 'Years', lang === 'ja' ? `${R.yrs}年` : `${R.yrs}`],
+    ['🏢', lang === 'ja' ? '売上貢献' : 'Revenue', moneyL(R.rev || 0, lang)],
+    ['👑', lang === 'ja' ? '最高役職' : 'Peak title', lang === 'ja' ? LEVELS[R.peak || 0].sj : LEVELS[R.peak || 0].se],
+    ['👛', lang === 'ja' ? '生涯年収' : 'Lifetime pay', R.life != null ? moneyL(R.life, lang) : '—'],
+    ['😊', lang === 'ja' ? '幸福度' : 'Happiness', `${R.happy ?? '—'}pt`],
+    ['💮', lang === 'ja' ? 'S評価' : 'S grades', R.gS != null ? (lang === 'ja' ? `${R.gS}回` : `${R.gS}×`) : '—'],
+  ];
+  const tW = (CW - 2 * 26) / 3, tH = 168;
+  tiles.forEach(([ic, lb, val], i) => {
+    const tx = P + (i % 3) * (tW + 26), ty = y + Math.floor(i / 3) * (tH + 30);
+    cardBox(x, tx, ty, tW, tH, '#ffffff', 28);
+    txt(x, ic, tx + tW / 2, ty + 54, 40, OL, 'center'); txt(x, lb, tx + tW / 2, ty + 92, 26, '#6c727f', 'center', 800);
+    fitTxt(x, val, tx + tW / 2, ty + 142, 40, tW - 30, OL, 'center');
+  });
+  y += 2 * tH + 30 + 50;
+
+  // 5 — revenue chart
+  if (R.h && R.h.length) {
+    cardBox(x, P, y, CW, 330);
+    txt(x, `📈 ${lang === 'ja' ? '売上貢献の推移' : 'Revenue by year'}`, P + 36, y + 58, 34);
+    const x0 = P + 120, x1 = P + CW - 34, y0 = y + 86, y1 = y + 272, n = R.h.length;
+    const top = niceMax(Math.max(1, ...R.h.map(h => h[2]))), bw2 = (x1 - x0) / n;
+    const short = (v) => lang === 'ja' ? (v >= 10000 ? (v / 10000).toFixed(1).replace(/\.0$/, '') + '億' : Math.round(v) + '万') : (v * 1e4 >= 1e9 ? '¥' + (v / 1e5).toFixed(1).replace(/\.0$/, '') + 'B' : '¥' + Math.round(v / 100) + 'M');
+    for (const f of [0, .5, 1]) { const yy = y1 - (y1 - y0) * f; x.beginPath(); x.moveTo(x0, yy); x.lineTo(x1, yy); x.strokeStyle = f ? '#e9ecef' : OL; x.lineWidth = f ? 2 : 3; x.stroke(); txt(x, short(top * f), x0 - 12, yy + 9, 24, '#6c727f', 'right', 800); }
+    R.h.forEach(([age, lv, rev], i) => {
+      const bh2 = Math.max(2, (y1 - y0) * rev / top), bx2 = x0 + i * bw2 + 2, w2 = Math.max(2, bw2 - 4), r2 = Math.min(6, w2 / 2, bh2);
+      rrect(x, bx2, y1 - bh2, w2, bh2 + r2, r2); x.fillStyle = lv === 7 ? '#e8590c' : LEVELS[lv].color; x.fill();
+    });
+    txt(x, ageL(R.h[0][0]), x0, y1 + 36, 24, '#6c727f', 'left', 800); txt(x, ageL(R.h[n - 1][0]), x1, y1 + 36, 24, '#6c727f', 'right', 800);
+    y += 330 + 40;
+  }
+
+  // 6 — highlights
+  if (R.hl && R.hl.length) {
+    const rows = R.hl.map(([a, ic, ja, en]) => ({ a, ic, lines: wrapLines(x, lang === 'ja' ? ja : en, CW - 270, 32, 800, 2) }));
+    const hgt = 96 + rows.reduce((s, r) => s + 30 + r.lines.length * 44, 0) + 16;
+    cardBox(x, P, y, CW, hgt);
+    txt(x, `🏆 ${lang === 'ja' ? '主な実績' : 'Highlights'}`, P + 36, y + 62, 36);
+    let ry = y + 96;
+    rows.forEach((r, i) => {
+      const rh = 30 + r.lines.length * 44;
+      if (i) { x.setLineDash([10, 10]); x.beginPath(); x.moveTo(P + 36, ry); x.lineTo(P + CW - 36, ry); x.strokeStyle = '#dee2e6'; x.lineWidth = 3; x.stroke(); x.setLineDash([]); }
+      pill(x, ageL(r.a), P + 36, ry + (rh - 50) / 2, 28, i === rows.length - 1 ? '#ffe066' : '#e7f5ff', 50);
+      txt(x, r.ic, P + 192, ry + rh / 2 + 15, 40, OL, 'center');
+      r.lines.forEach((ln, j) => txt(x, ln, P + 236, ry + 15 + 38 + j * 44 - (r.lines.length - 1) * 0, 32, OL, 'left', 800));
+      ry += rh;
+    });
+    y += hgt + 40;
+  }
+
+  // 7 — "AI" career review
+  if (R.sc) {
+    const ai = tt(CONFIG.aiName || { ja: '本中AI', en: 'Motonaka AI' });
+    const ov = overallOf(R.sc), og = letter(ov, true);
+    const cLines = wrapLines(x, aiCommentText(R.cm, lang), CW - 90, 32, 700);
+    const advK = ((R.cm || []).find(p => p[0] === 'adv') || [])[1];
+    const aLines = advK ? wrapLines(x, `💡 ${lang === 'ja' ? 'アドバイス:' : 'Advice: '}${AI_TXT.adv[advK][lang]}`, CW - 130, 32, 900) : [];
+    const hgt = 96 + 650 + 30 + cLines.length * 48 + 30 + (aLines.length ? aLines.length * 46 + 50 : 0) + 120;
+    cardBox(x, P, y, CW, hgt);
+    fitTxt(x, `🤖 ${lang === 'ja' ? `${ai}のキャリア診断` : `${ai}'s career review`}`, P + 36, y + 62, 36, CW - 72);
+    radar(x, P + 270, y + 380, 180, R.sc);
+    // overall stamp
+    const sx = P + 760, sy = y + 205, sr = 100, gc = og[0] === 'S' ? '#f59f00' : og[0] === 'C' || og[0] === 'D' ? '#868e96' : '#e03131';
+    x.save(); x.translate(sx, sy); x.rotate(-.18);
+    x.beginPath(); x.arc(0, 0, sr, 0, 7); x.fillStyle = og[0] === 'S' ? '#fff9db' : '#fff5f5'; x.fill(); x.lineWidth = 12; x.strokeStyle = gc; x.stroke();
+    x.beginPath(); x.arc(0, 0, sr - 18, 0, 7); x.lineWidth = 3; x.stroke();
+    txt(x, og, 0, og.length > 1 ? 34 : 40, og.length > 1 ? 92 : 112, gc, 'center'); x.restore();
+    txt(x, lang === 'ja' ? '総合評価' : 'Overall', sx, sy + sr + 50, 30, '#6c727f', 'center', 800);
+    // criteria list
+    let ly = y + 400;
+    CRIT_KEYS.forEach((k) => {
+      const lg = letter(R.sc[k]);
+      fitTxt(x, `${AI_CRIT[k].icon} ${T2(AI_CRIT[k])}`, P + 560, ly + 34, 28, 330, OL, 'left', 800);
+      pill(x, lg, P + CW - 40, ly, 28, GRADE_BG[lg], 46, 'right');
+      ly += 52;
+    });
+    // comment + advice
+    let cy2 = y + 96 + 650 + 30;
+    cLines.forEach((ln, i) => txt(x, ln, P + 45, cy2 + i * 48, 32, OL, 'left', 700));
+    cy2 += cLines.length * 48 + 10;
+    if (aLines.length) {
+      const ah = aLines.length * 46 + 34;
+      rrect(x, P + 30, cy2, CW - 60, ah, 22); x.fillStyle = '#fff3bf'; x.fill(); x.lineWidth = 4; x.strokeStyle = OL; x.stroke();
+      aLines.forEach((ln, i) => txt(x, ln, P + 60, cy2 + 50 + i * 46, 32, OL, 'left', 900));
+      cy2 += ah + 20;
+    }
+    txt(x, `— ${ai}(β)`, P + CW - 40, cy2 + 44, 30, OL, 'right');
+    txt(x, lang === 'ja' ? '※本物のAIではありません(中身はif文です)' : '* Not a real AI (it is just if-statements)', P + CW - 40, cy2 + 84, 22, '#868e96', 'right', 700);
+    y += hgt + 40;
+  } else {
+    cardBox(x, P, y, CW, 120, '#f1f3f5');
+    fitTxt(x, lang === 'ja' ? 'この記録は旧バージョンのため、詳細データがありません' : 'This run is from an older version, so details are not available', W / 2, y + 72, 30, CW - 60, '#6c727f', 'center', 800);
+    y += 160;
+  }
+
+  // footer
+  fitTxt(x, `🎰 ${tt(UI.title)} · ${tt(CONFIG.company)}${CONFIG.tripId ? ' · ' + CONFIG.tripId : ''}`, W / 2, y + 20, 26, CW, '#868e96', 'center', 800);
+  y += 56;
+  const out = document.createElement('canvas'); out.width = W; out.height = y;
+  out.getContext('2d').drawImage(cv, 0, 0);
+  return out;
+}
+
+/* report overlay (used by the ending screen and the leaderboard) */
+async function openReport(run) {
+  SFX.tap();
+  const ov = document.createElement('div'); ov.className = 'overlay report-ov';
+  ov.innerHTML = `<div class="report-box">
+    <div class="rp-bar"><button class="btn small" id="rpx">✕ ${tt(UI.close)}</button><b>📜 ${tt(UI.report)}</b><span style="width:70px"></span></div>
+    <div class="rp-img-wrap card" id="rpw"><div class="empty">⏳ ${tt(UI.making)}</div></div>
+    <button class="btn big primary" id="rps" disabled>📥 ${tt(UI.saveImg)}</button>
+    <div class="status">${tt(UI.longPress)}</div></div>`;
+  document.body.appendChild(ov);
+  let closed = false;
+  $('#rpx', ov).onclick = () => { closed = true; ov.remove(); SFX.tap(); };
+  let R = null;
+  try { R = run.sum ? JSON.parse(run.sum) : null; } catch (e) { R = null; }
+  if (!R) { const s = await LB.fetchSum(run.id); try { R = s ? JSON.parse(s) : null; } catch (e) { R = null; } }
+  if (!R) R = legacyReport(run);
+  if (closed) return;
+  const canvas = await renderReport(R);
+  const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+  if (closed || !blob) return;
+  const url = URL.createObjectURL(blob);
+  $('#rpw', ov).innerHTML = `<img class="rp-img" src="${url}" alt="${esc(tt(UI.report))}">`;
+  const name = `shinsotsu-gacha_${String(R.p || 'player').replace(/[^\w぀-ヿ㐀-鿿-]+/g, '_')}_${R.d || ''}.png`;
+  const btn = $('#rps', ov); btn.disabled = false; btn.classList.add('pulse');
+  btn.onclick = async () => {
+    SFX.tap();
+    const file = new File([blob], name, { type: 'image/png' });
+    const mobile = matchMedia('(pointer:coarse)').matches;
+    if (mobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: tt(UI.report) }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  };
+}
 /* ============================ UI ============================ */
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -1983,18 +2451,7 @@ function screen(html, cls = '') { $app.innerHTML = `<div class="screen ${cls}">$
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 1900); }
 
 /* ---------- formatting ---------- */
-function money(man) {
-  const v = Math.round(man);
-  if (L === 'ja') {
-    if (Math.abs(v) >= 10000) return (v / 10000).toFixed(Math.abs(v) >= 1000000 ? 0 : 1).replace(/\.0$/, '') + '億円';
-    return v.toLocaleString('ja-JP') + '万円';
-  }
-  const yen = v * 10000;
-  if (Math.abs(yen) >= 1e9) return '¥' + (yen / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
-  if (Math.abs(yen) >= 1e8) return '¥' + Math.round(yen / 1e6) + 'M';
-  if (Math.abs(yen) >= 1e6) return '¥' + (yen / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
-  return '¥' + Math.round(yen / 1e3) + 'K';
-}
+const money = (man) => moneyL(man, L);
 function moneyShort(man) {
   if (L === 'ja') return man >= 10000 ? (man / 10000).toFixed(1).replace(/\.0$/, '') + '億' : Math.round(man) + '万';
   const y = man * 1e4; return y >= 1e9 ? '¥' + (y / 1e9).toFixed(1).replace(/\.0$/, '') + 'B' : '¥' + Math.round(y / 1e6) + 'M';
@@ -2049,7 +2506,7 @@ const LB = {
   local() { return store.get('sg_runs', []); },
   pending() { return store.get('sg_pending', []); },
   async submit(run) {
-    const runs = this.local(); runs.push(run); store.set('sg_runs', runs.slice(-300));
+    const runs = this.local(); runs.push(run); store.set('sg_runs', runs.slice(-150));
     if (!this.url()) return 'local';
     const p = this.pending(); p.push(run); store.set('sg_pending', p);
     return (await this.flush()) ? 'sent' : 'queued';
@@ -2065,6 +2522,13 @@ const LB = {
     const now = this.pending().filter(r => !p.some(x => x.id === r.id));
     store.set('sg_pending', left.concat(now));
     return left.length === 0;
+  },
+  async fetchSum(id) {
+    const loc = this.local().concat(this.pending()).find(r => r.id === id);
+    if (loc && loc.sum) return loc.sum;
+    if (!this.url()) return null;
+    try { const r = await fetch(this.url() + (this.url().includes('?') ? '&' : '?') + 'id=' + encodeURIComponent(id)); const j = await r.json(); return (j.run && j.run.sum) || null; }
+    catch (e) { return null; }
   },
   async fetchAll() {
     const trip = CONFIG.tripId || '';
@@ -2319,6 +2783,7 @@ async function eventCard(ev) {
   await wait(150);
   const forced = ch.check ? await timingGame(checkP(S, ch.check)) : undefined;
   const res = resolveChoice(S, ev, ch, forced);
+  logChoice(S, ev, ch, res);
   if (ch.mystery) await mysteryAnim();
   const deltas = applyFx(S, res.fx, res.tag);
   const streak = applyStreak(S, res.success);
@@ -2462,12 +2927,13 @@ async function endingScreen(endId) {
   const v = (endId === 'startup' && !S.startupWin) ? E.alt : E;
   const title = T(v.title), sub = T(v.sub);
   const acc = endId === 'retire' ? (S.peak === 7 ? 'crown bouquet' : 'bouquet') : '';
-  const run = makeRun(S, endId, PLAYER);
+  const run = makeRunWithReport(S, endId, PLAYER);
   const ttl = careerTitle(S, endId);
   const el = screen(`<div class="scene end-hero">${sceneSVG(E.scene, S, { mood: 'happy', acc, deco: endId === 'lottery' ? 'money' : null })}</div>
     <div class="end-title">${E.icon} ${esc(title)}</div><div class="end-sub">${esc(sub)}</div>
     <div class="who">${flagSVG(S.nat, 15)} ${esc(tt(S.name))} · ${ageStr(S.age)}</div>
     <div class="card ttl-card"><div class="ttl-lb">🎖️ ${tt(UI.ttl)}</div><div class="ttl"><span class="ttl-ic">${ttl.icon}</span>${esc(tt(ttl))}</div></div>
+    <button class="btn big yellow pulse" id="rpb">📜 ${tt(UI.reportBtn)}</button>
     <div class="tiles">
       <div class="card tile"><div class="ic">🕰️</div><div class="lb">${tt(UI.tenure)}</div><div class="val">${yearsStr(run.years)}</div><div class="rk" id="rk_tenure"></div></div>
       <div class="card tile"><div class="ic">🏢</div><div class="lb">${tt(UI.revenue)}</div><div class="val">${money(run.revenue)}</div><div class="rk" id="rk_revenue"></div></div>
@@ -2483,6 +2949,7 @@ async function endingScreen(endId) {
     <button class="btn small" id="home" style="align-self:center">🏠 ${tt(UI.home)}</button>`, 'ending');
   SFX.fan(); if (E.good) confetti(90);
   bindChart();
+  $('#rpb').onclick = () => openReport(run);
   $('#again').onclick = () => { SFX.tap(); gachaScreen(); };
   $('#lb').onclick = () => { SFX.tap(); leaderboardScreen(run.id); };
   $('#home').onclick = () => { SFX.tap(); titleScreen(); };
@@ -2510,18 +2977,19 @@ async function leaderboardScreen(hl) {
   screen(`<div class="lb-head"><button class="btn small" id="bk">◀ ${tt(UI.back)}</button><h2>🏆</h2><button class="btn small" id="rf">🔄 ${tt(UI.refresh)}</button></div>
     <div class="tabs">${BOARDS.map(b => `<button class="tab ${b.id === tab ? 'on' : ''}" data-t="${b.id}"><b>${b.icon}</b>${tt(b.lb)}</button>`).join('')}</div>
     <label class="toggle"><input type="checkbox" id="best" checked> ${tt(UI.bestOnly)}</label>
-    <div class="status" id="st">⏳ ${tt(UI.loading)}</div><div class="lb-list" id="list"></div>`, 'lb');
+    <div class="status" id="st">⏳ ${tt(UI.loading)}</div><div class="lb-list" id="list"></div><div class="status">${tt(UI.tapRow)}</div>`, 'lb');
   const draw = () => {
     const b = BOARDS.find(x => x.id === tab) || BOARDS[0];
     const list = rankList(data.runs, b, $('#best').checked).slice(0, 50);
     $('#list').innerHTML = list.length ? list.map((r, i) => {
       let head = '<svg class="head"></svg>';
       try { if (r.look && r.look.skin) head = headSVG(r.look, { age: r.look.age || 30, mood: 'happy' }); } catch (e) { }
-      return `<div class="card lbi ${r.id === hl ? 'me' : ''} ${i === 0 ? 'top1' : ''}" style="animation-delay:${Math.min(i, 12) * .03}s">
+      return `<div class="card lbi tap ${r.id === hl ? 'me' : ''} ${i === 0 ? 'top1' : ''}" data-i="${i}" style="animation-delay:${Math.min(i, 12) * .03}s">
         <div class="rk">${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</div>${head}
         <div style="min-width:0"><div class="pn">${esc(r.player)}</div><div class="gn">${NATION[r.nat] ? flagSVG(r.nat, 10) : ''} ${(ENDINGS[r.ending] || {}).icon || ''} ${r.look && TITLE_MAP[r.look.ttl] ? TITLE_MAP[r.look.ttl].icon + ' ' + esc(tt(TITLE_MAP[r.look.ttl])) : esc(L === 'ja' ? (r.gradJa || '') : (r.gradEn || ''))}</div></div>
         <div class="vv">${b.val(r)}${b.sub ? `<div class="gn" style="justify-content:flex-end">${b.sub(r)}</div>` : ''}</div></div>`;
     }).join('') : `<div class="card empty">${tt(UI.noRuns)}</div>`;
+    $$('.lbi', $('#list')).forEach(row => { row.onclick = () => openReport(list[+row.dataset.i]); });
   };
   const load = async () => {
     $('#st').textContent = '⏳ ' + tt(UI.loading);
