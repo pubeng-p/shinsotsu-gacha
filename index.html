@@ -14,10 +14,10 @@
    ===================================================================== */
 const CONFIG = {
   // Google Apps Script web-app URL (see README). Leave '' = leaderboard on this device only.
-  leaderboardUrl: 'https://script.google.com/macros/s/AKfycbwIjYCl_5f8o6XwDto5PFzo_sr6ZfAq2IC6ON-yTJHRHN-R9qtj06ZTc2Xho1R41exIgw/exec',
+  leaderboardUrl: '',
 
   // Change this for each event to start a fresh leaderboard (old runs stay in the sheet).
-  tripId: 'company-trip-2026-test',
+  tripId: 'company-trip-2026',
 
   retireAge: 65,
 
@@ -41,8 +41,8 @@ const CONFIG = {
 
   // Client nicknames (shown in "{client} is furious" etc.)
   clients: [
+    { ja: '名古屋の商社', en: 'the Nagoya trading house' },
     { ja: '某大手メーカー', en: 'Big Manufacturing Co.' },
-    { ja: '老舗商社', en: 'the old trading house' },
     { ja: '急成長ベンチャー', en: 'the hypergrowth startup' },
   ],
 
@@ -59,6 +59,7 @@ const CONFIG = {
   catchphrases: [
     { ja: 'とりあえずやってみよう', en: 'Just try it!' },
     { ja: 'で、ROIは?', en: "So what's the ROI?" },
+    { ja: 'それ、AIでできない?', en: 'Can AI do that?' },
   ],
 
   // ---------------------------------------------------------------
@@ -204,9 +205,27 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appeara
 /* gauge */
 .gauge-box{padding:14px;display:grid;gap:8px;justify-items:center}
 .gauge{position:relative;width:100%;height:34px;border:3px solid var(--ink);border-radius:12px;background:#ffc9c9;overflow:hidden}
-.gauge .zone{position:absolute;left:0;top:0;bottom:0;background:#8ce99a;border-right:3px dashed var(--ink)}
+.gauge .zone{position:absolute;top:0;bottom:0;background:#8ce99a;border-left:3px dashed var(--ink);border-right:3px dashed var(--ink)}
 .gauge .needle{position:absolute;top:-2px;bottom:-2px;width:6px;margin-left:-3px;background:var(--ink);border-radius:3px}
 .gauge-lbl{font-weight:900;font-size:18px}
+.gauge{height:44px}
+.gauge .needle{width:8px;margin-left:-4px;transition:background .15s}
+.gauge .needle.hit{background:#2b8a3e;box-shadow:0 0 0 5px #b2f2bb}
+.gauge .needle.miss{background:#e03131;box-shadow:0 0 0 5px #ffc9c9}
+.tapzone{cursor:pointer;touch-action:manipulation}
+.shake-x{animation:shakeX .4s ease}
+.streak{text-align:center;font-weight:900;font-size:18px;color:#e8590c;animation:bump .6s ease}
+.meter.danger{animation:dangerPulse .7s ease-in-out infinite}
+.meter.danger .bar{border-color:#e03131}
+.scene.gold{border-color:#f59f00;box-shadow:0 6px 0 #e67700,0 0 0 4px #ffe066,0 0 24px 6px rgba(255,212,59,.7)}
+.ssr-tag{position:absolute;bottom:8px;right:8px;background:linear-gradient(90deg,#fab005,#ffe066,#fab005);color:var(--ink);font-weight:900;font-size:13px;padding:3px 10px;border-radius:999px;border:2.5px solid var(--ink);animation:bump 1s ease infinite}
+.speed .spd-ic{font-size:56px;line-height:1.2}
+.speed .spin-fast{display:inline-block}
+.spd{margin:6px 0;font-size:22px;line-height:1.35}
+.ttl-card{padding:10px 12px;text-align:center;background:linear-gradient(#fffdf0,#fff3bf);animation:popIn .5s cubic-bezier(.3,1.5,.6,1) .2s backwards}
+.ttl-lb{font-size:12px;font-weight:900;color:var(--muted)}
+.ttl{font-size:24px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+.ttl-ic{font-size:34px}
 
 /* outcome */
 .outcome{padding:12px;display:grid;gap:10px;animation:popIn .35s cubic-bezier(.3,1.4,.6,1)}
@@ -338,6 +357,8 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appeara
 @keyframes shakeSoft{0%,100%{transform:rotate(0)}25%{transform:rotate(-1.5deg)}75%{transform:rotate(1.5deg)}}
 @keyframes pulseSoft{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
 @keyframes stamp{0%{opacity:0;transform:rotate(-12deg) scale(2.2)}100%{opacity:1;transform:rotate(-12deg) scale(1)}}
+@keyframes shakeX{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+@keyframes dangerPulse{0%,100%{opacity:1}50%{opacity:.45}}
 @keyframes confetti{to{transform:translateY(110vh) rotate(720deg)}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important}}
 </style>
@@ -354,7 +375,7 @@ const LEVELS = [
   { ja: 'シニアコンサルタント', en: 'Senior Consultant', sj: 'シニアコンサル', se: 'Sr. Consultant', sal: 680, rev: 2600, yrs: 3, rep: 68, slot: 0.8, color: '#38d9a9' },
   { ja: 'マネージャー', en: 'Manager', sj: 'マネージャー', se: 'Manager', sal: 900, rev: 4000, yrs: 4, rep: 76, slot: 0.5, color: '#fcc419' },
   { ja: 'シニアマネージャー', en: 'Senior Manager', sj: 'シニアマネージャー', se: 'Sr. Manager', sal: 1150, rev: 6000, yrs: 5, rep: 86, slot: 0.25, color: '#ff922b' },
-  { ja: 'ディレクター', en: 'Director', sj: 'ディレクター', se: 'Director', sal: 1450, rev: 8500, yrs: 6, rep: 92, slot: 0.15, color: '#f06595' },
+  { ja: 'ディレクター', en: 'Director', sj: 'ディレクター', se: 'Director', sal: 1450, rev: 8500, yrs: 6, rep: 93, slot: 0.1, color: '#f06595' },
   { ja: 'パートナー', en: 'Partner', sj: 'パートナー', se: 'Partner', sal: 2000, rev: 12000, yrs: 99, rep: 999, slot: 1, color: '#9775fa' },
   { ja: '社長', en: 'CEO', sj: '社長', se: 'CEO', sal: 3200, rev: 18000, yrs: 99, rep: 999, slot: 1, color: '#e8590c' },
 ];
@@ -548,6 +569,14 @@ const UI = {
   boomerPoached: { ja: '転職先が合わなかった…', en: "The new job wasn't a fit…" },
   welcome: { ja: 'おかえり!', en: 'WELCOME BACK!' },
   away: { ja: '社外', en: 'Away' },
+  tapStop: { ja: 'タップで止めろ!', en: 'Tap to stop!' },
+  speed1: { ja: '⏩ 時の流れが速くなってきた…', en: '⏩ Time starts to fly…' },
+  speed1s: { ja: 'ここからは1年ずつ進みます', en: 'One card per year from now on' },
+  speed2: { ja: '⏩⏩ 年を取るほど1年は短い…', en: '⏩⏩ The years fly by even faster…' },
+  speed2s: { ja: 'ここからは2年ずつ!(ジャネーの法則)', en: "Two years per card now (Janet's law)" },
+  streak: { ja: '連続成功ボーナス!', en: 'in a row! Bonus!' },
+  ttl: { ja: '称号', en: 'Title' },
+  ssr: { ja: 'SSRイベント', en: 'SSR event' },
 };
 
 const ICON = { tech: '💻', biz: '📊', comm: '💬', stamina: '💪', luck: '🍀', mot: '🔥', stress: '😰', rep: '⭐', rev: '🏢', sal: '💴', pay: '👛', kids: '👶', married: '💍' };
@@ -573,12 +602,12 @@ const EVENTS = [
     C('✍️', '手作業でやる', 'Do it by hand', { stress: 14, rep: 6, biz: 3 }, { tag: 'night' }),
     C('🙋', '先輩に聞く', 'Ask a senior', { comm: 4, rep: 3, mot: 2 }),
   ] },
-  { id: 'uat', scene: 'night', maxLv: 4, title: t('UAT前夜にバグ発覚', 'Bugs found the night before UAT'), choices: [
+  { id: 'uat', scene: 'night', maxLv: 4, maxAge: 40, title: t('UAT前夜にバグ発覚', 'Bugs found the night before UAT'), choices: [
     C('🌙', '徹夜で直す', 'All-nighter', { stress: 18, rep: 10, rev: 300, tech: 3 }, { tag: 'night' }),
     K('📢', '上に報告', 'Escalate', 'comm', { rep: 6, stress: -3 }, { rep: -8, mot: -5 }),
     C('🏠', '帰って寝る', 'Go home', { stress: -10, rep: -8, mot: 5 }),
   ] },
-  { id: 'cutover', scene: 'night', maxLv: 4, minT: 1, title: t('本番移行の週末', 'Cutover weekend'), choices: [
+  { id: 'cutover', scene: 'night', maxLv: 4, maxAge: 40, minT: 1, title: t('本番移行の週末', 'Cutover weekend'), choices: [
     C('🙋', '参戦する', 'Count me in', { stress: 15, rep: 12, rev: 400 }, { tag: 'night' }),
     C('🎢', '予定がある', 'Got plans', { mot: 12, rep: -8, stress: -8 }),
   ] },
@@ -587,11 +616,11 @@ const EVENTS = [
     K('📊', 'データで説明', 'Explain with data', 'biz', { rep: 12, rev: 300 }, { rep: -10, stress: 10 }, t('納得してもらえた', 'They get it now'), t('論破失敗', 'Argument lost')),
     C('🫣', '隠れる', 'Hide', { rep: -12, stress: -5 }),
   ] },
-  { id: 'cert', scene: 'classroom', cool: 5, title: t('Oracle認定資格の試験', 'Oracle certification exam'), choices: [
+  { id: 'cert', scene: 'classroom', cool: 5, maxAge: 45, title: t('Oracle認定資格の試験', 'Oracle certification exam'), choices: [
     K('📖', '受験する', 'Take the exam', 'tech', { tech: 8, rep: 8, sal: 20 }, { mot: -8, stress: 5 }, t('合格!', 'Passed!'), t('不合格…', 'Failed…')),
     C('⏭️', '今年はパス', 'Skip this year', { mot: 3 }),
   ] },
-  { id: 'nomikai', scene: 'izakaya', title: t('{boss}から飲みの誘い', '{boss} invites you for drinks'), choices: [
+  { id: 'nomikai', scene: 'izakaya', maxLv: 4, title: t('{boss}から飲みの誘い', '{boss} invites you for drinks'), choices: [
     C('🍺', '行く', 'Go', { comm: 5, rep: 6, stamina: -4, stress: -4 }),
     C('🙅', '丁重に断る', 'Politely decline', { mot: 5, rep: -3 }),
     K('🎤', 'カラオケまで', 'Karaoke too!', 'luck', { rep: 12, mot: 10 }, { rep: -5, stress: 5 }, t('十八番が炸裂!', 'Nailed the song!'), t('音痴がバレた', 'Off-key…')),
@@ -727,7 +756,7 @@ const EVENTS = [
     K('🎸', 'バンド結成', 'Start a band', 'luck', { mot: 15, comm: 4 }, { mot: 4 }, t('社内フェスで優勝!', 'Won the office music fest!'), t('練習初日で解散', 'Broke up at the first rehearsal')),
     C('🧘', '瞑想する', 'Meditate', { stress: -15 }),
   ] },
-  { id: 'empty', scene: 'home', deco: 'sweat', cool: 3, weight: 4, cond: S => S.stress >= 70, title: t('もう限界かも…', 'Running on empty…'), choices: [
+  { id: 'empty', scene: 'home', deco: 'sweat', cool: 2, weight: 5, cond: S => S.stress >= 65, title: t('もう限界かも…', 'Running on empty…'), choices: [
     C('🏝️', '有給で旅行', 'Take a vacation', { stress: -30, mot: 10, rev: -300 }),
     C('🧑‍⚕️', '産業医に相談', 'See the company doctor', { stress: -20, mot: 3 }),
     C('💪', '根性で乗り切る', 'Power through', { rev: 500, stress: 10, rep: 4 }),
@@ -856,7 +885,7 @@ const EVENTS = [
     C('🧑‍💼', '人手で十分', 'Humans are fine', { mot: -2 }),
   ] },
   /* ---------- office life ---------- */
-  { id: 'peerpromo', scene: 'office', minT: 2, cool: 6, title: t('同期が先に昇進した', 'Your peer got promoted first'), choices: [
+  { id: 'peerpromo', scene: 'office', minT: 2, maxAge: 40, cool: 6, title: t('同期が先に昇進した', 'Your peer got promoted first'), choices: [
     C('😤', '絶対追いつく', "I'll catch up", { mot: 6, stress: 8, rep: 4 }),
     C('🎉', '心から祝う', 'Celebrate for real', { mot: 4, comm: 3 }),
     C('🍶', 'やけ酒', 'Drown your sorrows', { stress: -6, stamina: -4 }),
@@ -865,7 +894,7 @@ const EVENTS = [
     C('✅', '即提出', 'Submit right away', { rep: 2, mot: 2 }),
     K('😱', '締切を忘れてた', 'Forgot the deadline', 'luck', { mot: 2 }, { rep: -5, stress: 5 }, t('ギリギリ間に合った', 'Made it just in time'), t('人事に怒られた', 'HR is not happy')),
   ] },
-  { id: 'sportsday', scene: 'golf', cool: 5, title: t('社内運動会', 'Company sports day'), choices: [
+  { id: 'sportsday', scene: 'golf', cool: 5, maxAge: 50, title: t('社内運動会', 'Company sports day'), choices: [
     K('🏃', 'リレーのアンカー', 'Anchor the relay', 'stamina', { rep: 8, mot: 10 }, { mot: -4, stamina: -3 }, t('ごぼう抜き!', 'Overtook everyone!'), t('派手に転んだ', 'Tripped spectacularly')),
     C('📣', '応援団長', 'Head cheerleader', { comm: 5, mot: 6 }),
     C('🍱', '弁当係', 'Bento duty', { mot: 3, stress: -3 }),
@@ -892,7 +921,151 @@ const EVENTS = [
     K('🥹', '感動系', 'Go for tears', 'comm', { rep: 6, mot: 8 }, { mot: -3 }, t('会場が号泣', 'Not a dry eye in the room'), t('長すぎた', 'Way too long')),
     K('😂', '笑い系', 'Go for laughs', 'luck', { rep: 6, mot: 8 }, { rep: -4 }, t('爆笑!', 'Roaring laughter!'), t('すべった', 'Fell flat')),
   ] },
+  /* ---------- 名古屋の商社 & AI (inside jokes) ---------- */
+  { id: 'nagoyaTrip', scene: 'train', minT: 1, cool: 3, weight: 1.4, title: t('名古屋の商社へ出張', 'Business trip to the Nagoya trading house'), choices: [
+    C('🍛', '味噌カツで気合い', 'Power up with miso katsu', { mot: 8, stamina: 3 }),
+    C('☕', '喫茶店のモーニング', 'A Nagoya café "morning" set', { mot: 6, stress: -6 }, { text: t('コーヒー1杯でトーストと卵が付いてきた', 'Toast and an egg came free with the coffee') }),
+    K('🍗', '先方と名古屋めし会食', 'Dinner with the client', 'comm', { rep: 8, rev: 800 }, { stamina: -4, mot: -3 }, t('手羽先で意気投合!', 'Bonded over tebasaki wings!'), t('ひつまぶしの食べ方で説教された', 'Got lectured on how to eat hitsumabushi')),
+  ] },
+  { id: 'nagoyaOrder', scene: 'boardroom', deco: 'sparkle', minT: 2, cool: 4, weight: 1.3, title: t('名古屋の商社から追加発注!', 'Big add-on order from the Nagoya trading house!'), choices: [
+    K('💪', '全部引き受ける', 'Take it all on', 'biz', { rev: 3000, rep: 12, stress: 10 }, { rev: 1500, stress: 18 }, t('大型受注!', 'Huge win!'), t('炎上ぎみ…', 'Things are heating up…')),
+    C('🧩', '段階リリースを提案', 'Propose a phased rollout', { rev: 1500, rep: 6 }),
+    K('🤖', 'AIで工数を圧縮', 'Cut the effort with AI', 'tech', { rev: 2500, rep: 10 }, { rep: -6 }, t('驚異の生産性!', 'Unbelievable productivity!'), t('AIの見積もりが楽観的すぎた', 'The AI estimate was way too optimistic')),
+  ] },
+  { id: 'aiSpec', scene: 'office', minT: 1, cool: 3, weight: 1.4, title: t('名古屋案件の仕様書をAIでレビュー', 'AI reviews the Nagoya project specs'), choices: [
+    K('🤖', 'AIに全部任せる', 'Let the AI review it all', 'tech', { rev: 800, rep: 8, mot: 5 }, { rep: -8, stress: 6 }, t('矛盾を300件発見!', 'Found 300 contradictions!'), t('AI「全部問題ありません!」', 'AI: "Looks perfect!"')),
+    C('🧑‍💻', 'AI+人でダブルチェック', 'AI + human double-check', { rep: 8, rev: 500, stress: 4 }),
+    C('📄', '人力で全部読む', 'Read it all by hand', { stress: 14, biz: 4, rep: 4 }, { tag: 'night' }),
+  ] },
+  { id: 'aiOcr', scene: 'office', minT: 1, once: true, weight: 1.5, title: t('AI-OCR案件:手書き伝票を読み取れ', 'AI-OCR project: read handwritten invoices'), choices: [
+    K('🎯', '精度99%を目指す', 'Aim for 99% accuracy', 'tech', { rev: 1200, rep: 10, tech: 4 }, { stress: 12, rep: -4 }, t('精度99.2%達成!', 'Hit 99.2% accuracy!'), t('「1」と「7」が区別できない', "Can't tell a 1 from a 7")),
+    C('👀', '人の目視チェックを挟む', 'Add a human check step', { rep: 6, rev: 600 }),
+    C('🖋️', '達筆すぎる伝票に絶望', 'Despair at the calligraphy', { mot: -3, stress: 4 }, { text: t('{boss}の字はAIでも読めない', "Not even AI can read {boss}'s handwriting") }),
+  ] },
+  { id: 'aiHack', scene: 'stage', deco: 'sparkle', minT: 1, cool: 4, title: t('社内AIハッカソン開催!', 'Company AI hackathon!'), choices: [
+    K('🏆', '優勝を狙う', 'Go for the win', 'tech', { rep: 10, mot: 10, tech: 4 }, { mot: -4, stress: 5 }, t('優勝!', 'You won!'), t('デモで動かなかった', 'The demo crashed on stage')),
+    K('🤝', '営業と組む', 'Team up with sales', 'comm', { rev: 1000, comm: 4, rep: 6 }, { mot: -3 }, t('そのまま案件化!', 'It turned into a real deal!'), t('方向性で揉めた', "Couldn't agree on anything")),
+    C('🍕', 'ピザだけ食べに行く', 'Just here for the pizza', { mot: 4, stress: -3 }),
+  ] },
+  { id: 'aiPitch', scene: 'meeting', minLv: 2, cool: 4, title: t('顧客にAI活用を提案', 'Pitch an AI project to a client'), choices: [
+    K('🧪', 'PoCから始める', 'Start with a PoC', 'biz', { rev: 1500, rep: 8 }, { rep: -4 }, t('PoC受注!', 'PoC signed!'), t('検討します、で終わった', 'Ended at "we\'ll think about it"')),
+    K('🚀', '全社導入を提案', 'Propose a company-wide rollout', 'comm', { rev: 3500, rep: 12 }, { rep: -10, mot: -5 }, t('即決!', 'Signed on the spot!'), t('「時期尚早」', '"Too early for us"')),
+  ] },
+  { id: 'aiAll', scene: 'boardroom', minT: 2, cool: 6, title: t('社長「全業務にAIを!」', 'CEO: "AI in every workflow!"'), choices: [
+    C('🤖', '自分の業務を自動化', 'Automate your own job', { tech: 5, mot: 6, stress: -6 }, { text: t('定時で帰れるようになった', 'Now you leave on time') }),
+    K('🧑‍🏫', 'チームにAI研修', 'Train the team on AI', 'comm', { rep: 10, comm: 3 }, { stress: 6 }),
+    C('📝', '議事録だけAIで', 'Use it for meeting notes only', { stress: -2, rep: -2 }),
+  ] },
+  /* ---------- ✨ SSR events (rare, gold card) ---------- */
+  { id: 'goldNagoya', gold: true, scene: 'boardroom', deco: 'sparkle', minT: 4, once: true, weight: .35, title: t('名古屋の商社が全社導入を決定!', 'The Nagoya trading house goes company-wide!'), choices: [
+    C('🥂', '祝杯をあげる', 'Raise a toast', { mot: 20, rep: 10, rev: 5000 }),
+    K('🚀', '次のフェーズを提案', 'Pitch the next phase', 'biz', { rev: 9000, rep: 15 }, { rev: 4000, rep: 5 }, t('超大型受注!', 'Mega deal!'), t('次回に持ち越し', 'Saved for next time')),
+  ] },
+  { id: 'goldHole', gold: true, scene: 'golf', deco: 'sparkle', minLv: 2, once: true, weight: .3, title: t('接待ゴルフでホールインワン!', 'Hole-in-one at client golf!'), choices: [
+    C('🎉', '全員におごる', 'Drinks on you!', { mot: 15, rep: 12, pay: -50, comm: 4 }, { text: t('ホールインワン保険に入っててよかった', 'Thank goodness for hole-in-one insurance') }),
+    C('🤫', '静かに喜ぶ', 'Celebrate quietly', { mot: 12, luck: 5 }),
+  ] },
+  { id: 'goldElevator', gold: true, scene: 'office', deco: 'sparkle', minT: 2, once: true, weight: .3, title: t('社長とエレベーターで2人きり', 'Alone in the elevator with the CEO'), choices: [
+    K('🗣️', '30秒で提案する', 'Pitch in 30 seconds', 'comm', { rep: 22, sal: 80, mot: 10 }, { rep: -4, stress: 5 }, t('「君、面白いね」', '"I like you, kid"'), t('噛んで終わった', 'Tongue-tied the whole ride')),
+    C('🌤️', '天気の話をする', 'Talk about the weather', { rep: 3, stress: -2 }),
+  ] },
+  { id: 'goldAI', gold: true, scene: 'server', deco: 'sparkle', minT: 3, once: true, weight: .3, title: t('自作AIツールが全社標準に!', 'Your homemade AI tool becomes standard!'), choices: [
+    C('🏆', '社内表彰を受ける', 'Accept the award', { rep: 18, sal: 60, mot: 12 }),
+    C('🌐', 'OSSで公開する', 'Open-source it', { rep: 10, tech: 8, mot: 15 }, { text: t('GitHubで星が1万個', '10,000 stars on GitHub') }),
+  ] },
+
+  /* ---------- stress relief ---------- */
+  { id: 'vacation', scene: 'beach', minT: 1, cool: 3, weight: S => S.stress >= 55 ? 1.5 : .5, title: t('長期休暇が取れた!', 'You got a long vacation!'), choices: [
+    C('🏝️', '沖縄でのんびり', 'Relax in Okinawa', { stress: -20, mot: 8 }),
+    C('⛷️', '北海道でスキー', 'Ski in Hokkaido', { stress: -14, stamina: 6, mot: 6 }),
+    K('✈️', '海外で冒険', 'Adventure abroad', 'luck', { stress: -18, mot: 14, comm: 4 }, { stress: -6, mot: -3 }, t('最高の旅!', 'Trip of a lifetime!'), t('パスポートを忘れた', 'Forgot your passport')),
+  ] },
+  { id: 'onsen', scene: 'countryside', minT: 1, cool: 4, weight: S => S.stress >= 55 ? 1.2 : .4, title: t('週末に温泉へ', 'A weekend at a hot spring'), choices: [
+    C('♨️', '何も考えない', 'Think about nothing', { stress: -15, mot: 4 }),
+    C('💻', 'PC持参で温泉', 'Bring the laptop anyway', { stress: -4, rev: 300 }),
+  ] },
+
+  /* ---------- mid & late career ---------- */
+  { id: 'reunion', scene: 'izakaya', minAge: 38, cool: 10, weight: 1.3, title: t('20年ぶりの同窓会', 'Class reunion after 20 years'), choices: [
+    { icon: '💼', label: t('肩書きを自慢する', 'Flex your job title'),
+      run: S => S.lv >= 4 ? { success: true, fx: { mot: 10 }, text: t('みんな驚いてた', 'Everyone was impressed') } : { success: false, fx: { mot: -5 }, text: t('同級生が社長だった', 'A classmate is a CEO') } },
+    C('🍻', '思い出話で盛り上がる', 'Reminisce all night', { stress: -10, mot: 6 }),
+    K('🤝', '旧友を中途採用に誘う', 'Recruit an old friend', 'comm', { rev: 1200, rep: 8 }, { mot: -3 }, t('即戦力をゲット!', 'Hired an instant ace!'), t('断られた', 'They said no')),
+  ] },
+  { id: 'kidexam', scene: 'home', minAge: 40, maxAge: 58, cool: 6, weight: 1.2, cond: S => S.kids > 0, title: t('子供の受験シーズン', "Your kid's exam season"), choices: [
+    C('📚', '勉強を見てあげる', 'Tutor them yourself', { mot: 6, stress: 8, comm: 3 }),
+    K('⛩️', '合格祈願に行く', 'Pray at a shrine', 'luck', { mot: 15, stress: -6 }, { mot: -4 }, t('サクラサク!', 'They passed!'), t('サクラチル…', 'Not this time…')),
+    C('🏫', '塾に任せる', 'Leave it to cram school', { pay: -80, stress: -4 }),
+  ] },
+  { id: 'slang', scene: 'office', minAge: 40, cool: 6, weight: 1.2, title: t('若手の言葉がわからない', "Can't understand Gen Z slang"), choices: [
+    C('🙋', '素直に教わる', 'Ask them to explain', { comm: 5, mot: 5, rep: 3 }),
+    K('😎', '使ってみる', 'Try using it', 'luck', { rep: 6, mot: 8 }, { rep: -3, stress: 4 }, t('「それな」がウケた', '"No cap" landed!'), t('空気が凍った', 'The room went silent')),
+    C('🙉', 'スルーする', 'Ignore it', { stress: -2, comm: -3 }),
+  ] },
+  { id: 'eyes', scene: 'home', minAge: 45, once: true, weight: 1.2, title: t('スマホの文字が見えない…', "You can't read your phone anymore…"), choices: [
+    C('👓', '老眼鏡デビュー', 'Get reading glasses', { mot: 2, stress: -3 }),
+    C('🔍', '文字サイズを最大に', 'Max out the font size', { mot: 4 }, { text: t('1画面に3文字', 'Three letters per screen') }),
+    C('🙅', '認めない', 'Refuse to admit it', { stress: 5, rep: -2 }),
+  ] },
+  { id: 'faction', scene: 'boardroom', minLv: 4, cool: 6, weight: 1.3, title: t('社内で派閥争い勃発', 'An office faction war breaks out'), choices: [
+    K('🦅', '改革派につく', 'Join the reformers', 'luck', { rep: 16, mot: 6 }, { rep: -12, stress: 8 }, t('改革派が勝った!', 'The reformers won!'), t('負け組になった…', 'You backed the losing side…')),
+    C('🕊️', '中立を貫く', 'Stay neutral', { stress: -4, rep: -2 }),
+    K('🤝', '両派をまとめる', 'Unite both sides', 'comm', { rep: 20 }, { stress: 12, rep: -4 }, t('社内に平和が訪れた', 'Peace returns to the office'), t('両方から嫌われた', 'Now both sides hate you')),
+  ] },
+  { id: 'secondment', scene: 'train', minAge: 45, minLv: 3, once: true, title: t('子会社への出向を打診', 'Offered a secondment to a subsidiary'), choices: [
+    C('🚢', '行ってみる', 'Give it a try', { stress: -10, mot: 6, comm: 5, rev: -300 }, { text: t('意外と楽しい', 'Surprisingly fun') }),
+    C('🏢', '本社に残る', 'Stay at HQ', { rep: 2 }),
+  ] },
+  { id: 'anniv', scene: 'stage', deco: 'sparkle', minLv: 4, minAge: 42, once: true, weight: 1.3, title: t('創立記念式典でスピーチ', 'Speech at the company anniversary'), choices: [
+    K('🎤', '熱く語る', 'Give a fiery speech', 'comm', { rep: 15, mot: 10 }, { rep: -4, stress: 5 }, t('スタンディングオベーション!', 'Standing ovation!'), t('マイクが入ってなかった', 'The mic was off')),
+    C('📜', '原稿を読む', 'Read the script', { rep: 4 }),
+  ] },
+  { id: 'grandkid', scene: 'home', minAge: 50, once: true, weight: 1.5, cond: S => S.kids > 0, title: t('孫が生まれた!', 'A grandchild is born!'), choices: [
+    C('👶', '全力で甘やかす', 'Spoil them rotten', { mot: 15, stress: -10, pay: -30 }),
+    C('💼', '孫のために稼ぐ', 'Work harder for them', { mot: 8, rev: 800 }),
+  ] },
+  { id: 'aiReplace', scene: 'server', minAge: 42, cool: 8, weight: 1.3, title: t('AIに仕事を奪われる!?', 'Is AI taking your job!?'), choices: [
+    K('🤖', 'AIを部下にする', 'Make AI your team', 'tech', { rev: 2000, rep: 10, stress: -5 }, { stress: 6 }, t('生産性10倍!', '10x productivity!'), t('AIが言うことを聞かない', "The AI won't listen")),
+    K('🧓', '人間力で勝負', 'Win on the human touch', 'comm', { rep: 10, mot: 6 }, { mot: -5 }),
+    C('🏖️', 'AIに任せて定時退社', 'Let AI work, leave early', { stress: -12, mot: 8, rep: -3 }),
+  ] },
+  { id: 'healthE', scene: 'clinic', minAge: 45, cool: 6, title: t('健康診断でE判定…', 'Health check: grade E…'), choices: [
+    C('🥗', '生活を見直す', 'Change your lifestyle', { stamina: 10, stress: -5, mot: -2 }),
+    K('🏃', 'マラソンに挑戦', 'Train for a marathon', 'stamina', { stamina: 14, mot: 10, stress: -6 }, { stamina: -4 }, t('完走!', 'Finished the race!'), t('5kmで棄権', 'Dropped out at 5 km')),
+    C('🍜', '見なかったことに', 'Pretend you never saw it', { mot: 3, stamina: -8 }),
+  ] },
+  { id: 'dream', scene: 'beach', minAge: 55, once: true, weight: 1.4, title: t('定年後の夢を考える', 'Dreaming about life after retirement'), choices: [
+    C('🎣', '釣り三昧', 'Fishing every day', { mot: 8, stress: -8 }),
+    C('🌏', '世界一周', 'Travel the world', { mot: 10, pay: -100 }),
+    C('💼', '生涯現役', 'Never retire', { rep: 6, mot: 4 }),
+  ] },
 ];
+
+/* event tags → counted for the career title (称号) */
+const EV_TAGS = {
+  nagoyaTrip: ['nagoya'], nagoyaOrder: ['nagoya'], aiSpec: ['nagoya', 'ai'], goldNagoya: ['nagoya'],
+  aiOcr: ['ai'], aiHack: ['ai'], aiPitch: ['ai'], aiAll: ['ai'], genai: ['ai'], aiagent: ['ai'], aiReplace: ['ai'], goldAI: ['ai'], relnotes: ['ai'],
+  close: ['acct'], oneyen: ['acct'], march: ['acct'], coa: ['acct'], audit: ['acct'], rounding: ['acct'], einvoice: ['acct'], excel: ['acct'],
+};
+/* first match wins */
+const TITLES = [
+  { id: 'ceo', icon: '👑', ja: '伝説の社長', en: 'Legendary CEO', test: S => S.peak >= 7 },
+  { id: 'isekai', icon: '🐉', ja: '異世界の勇者', en: 'Hero of Another World', test: (S, e) => e === 'isekai' },
+  { id: 'lucky', icon: '💰', ja: '強運の持ち主', en: 'Born Lucky', test: (S, e) => e === 'lottery' || (S.cnt.gold || 0) >= 2 },
+  { id: 'nagoya', icon: '🏯', ja: '名古屋の申し子', en: 'Child of Nagoya', test: S => (S.cnt.nagoya || 0) >= 4 },
+  { id: 'ai', icon: '🤖', ja: 'AI伝道師', en: 'AI Evangelist', test: S => (S.cnt.ai || 0) >= 6 },
+  { id: 'streak', icon: '🔥', ja: '持ってる人', en: 'On a Roll', test: S => (S.maxStreak || 0) >= 9 },
+  { id: 'acct', icon: '🧾', ja: '仕訳の鬼', en: 'Journal Entry Demon', test: S => (S.cnt.acct || 0) >= 5 },
+  { id: 'night', icon: '🌙', ja: '不夜城の住人', en: 'Creature of the Night', test: S => (S.cnt.night || 0) >= 3 },
+  { id: 'drink', icon: '🍺', ja: '飲み会番長', en: 'Party Captain', test: S => (S.cnt.drink || 0) >= 3 },
+  { id: 'legend', icon: '🏛️', ja: '生ける伝説', en: 'Living Legend', test: S => S.done >= 40 },
+  { id: 'boomer', icon: '🪃', ja: '出戻りの星', en: 'Boomerang Star', test: S => !!S.boomer },
+  { id: 'white', icon: '🌸', ja: 'ホワイト社員', en: 'Happiest Employee', test: S => happyScore(S) >= 68 },
+  { id: 'burn', icon: '🕯️', ja: '燃え尽きた戦士', en: 'Burnt-out Warrior', test: (S, e) => e === 'burnout' },
+  { id: 'speed', icon: '⚡', ja: '光速キャリア', en: 'Speedrunner', test: S => S.done <= 6 },
+  { id: 'normal', icon: '🙂', ja: 'ふつうの会社員', en: 'Perfectly Normal Employee', test: () => true },
+];
+const TITLE_MAP = Object.fromEntries(TITLES.map(x => [x.id, x]));
 /* ============================ ENGINE ============================ */
 let rnd = () => Math.random();
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -964,7 +1137,7 @@ function newState(grad, module) {
     stressMul: pers.stressMul || 1, repMul: pers.repMul || 1, night: pers.night || 1,
     lv: 0, yrsLv: 0, peak: 0, peakYear: 0,
     sal: LEVELS[0].sal + ri(-10, 20), revenue: 0, yearRev: 0, lifetime: 0, happySum: 0,
-    married: false, kids: 0, used: {}, hist: [], tok: {},
+    married: false, kids: 0, used: {}, hist: [], tok: {}, cnt: {}, streak: 0, maxStreak: 0, span: 0.5, fxMul: 1,
   };
   return S;
 }
@@ -987,13 +1160,18 @@ function eventOk(S, e) {
 }
 function pickEvent(S) {
   if (S.yearIdx === 0 && !S.half) return EVMAP.training;
-  if (S.yearIdx >= 2 && !S.used.magic && rnd() < 0.0008) return EVMAP.magic;
-  if (S.yearIdx >= 2 && S.stress < 70 && rnd() < 0.16) return 'quiet';
+  if (S.yearIdx >= 2 && !S.used.magic && rnd() < 0.0012) return EVMAP.magic;
+  if (S.yearIdx >= 2 && S.stress < 65 && rnd() < 0.1) return 'quiet';
   const pool = Object.values(EVMAP).filter(e => eventOk(S, e));
   if (!pool.length) return 'quiet';
   return wpick(pool, e => typeof e.weight === 'function' ? e.weight(S) : (e.weight ?? 1));
 }
-function markUsed(S, e) { S.used[e.id] = S.yearIdx; }
+function markUsed(S, e) {
+  S.used[e.id] = S.yearIdx;
+  for (const t of (e.tags || EV_TAGS[e.id] || [])) S.cnt[t] = (S.cnt[t] || 0) + 1;
+  if (e.scene === 'izakaya') S.cnt.drink = (S.cnt.drink || 0) + 1;
+  if (e.gold) S.cnt.gold = (S.cnt.gold || 0) + 1;
+}
 
 /* tokens like {client} are chosen once per event */
 function rollTokens(S) {
@@ -1025,12 +1203,13 @@ function choiceChance(S, ch) {
 }
 
 /* returns {success, fx, text, end, next, promote, roll, p} */
-function resolveChoice(S, ev, ch) {
+function resolveChoice(S, ev, ch, forced) {
   markUsed(S, ev);
+  if (ch.tag === 'night') S.cnt.night = (S.cnt.night || 0) + 1;
   if (ch.run) { const r = ch.run(S) || {}; return { success: r.success ?? null, fx: r.fx || {}, text: r.text, end: r.end, next: r.next }; }
   if (ch.check) {
     const p = checkP(S, ch.check), roll = rnd();
-    const ok = roll < p; const b = ok ? (ch.ok || {}) : (ch.ng || {});
+    const ok = forced ?? (roll < p); const b = ok ? (ch.ok || {}) : (ch.ng || {});
     return { success: ok, fx: b.fx || {}, text: b.text, end: b.end || null, next: b.next, p, roll, tag: ch.tag };
   }
   return { success: null, fx: ch.fx || {}, text: ch.text, end: ch.end || null, next: ch.next, promote: ch.promote, tag: ch.tag };
@@ -1038,20 +1217,20 @@ function resolveChoice(S, ev, ch) {
 
 /* apply effects, return actual deltas */
 const METERS = ['mot', 'stress', 'rep'];
-/* two event cards per year → each card's meter/skill effects are scaled down */
-const FX_SCALE = { mot: .65, stress: .65, rep: .6, tech: .6, biz: .6, comm: .6, stamina: .6, luck: .6 };
-const scaleFx = (k, v) => FX_SCALE[k] ? (Math.sign(v) * Math.max(1, Math.round(Math.abs(v) * FX_SCALE[k]))) : v;
+/* card effects are scaled to how much time a card covers (half-year cards are gentler, 2-year cards stronger) */
+const FX_SCALE = { mot: .65, stress: .65, rep: .5, tech: .6, biz: .6, comm: .6, stamina: .6, luck: .6 };
+const scaleFx = (k, v, m = 1) => FX_SCALE[k] ? (Math.sign(v) * Math.max(1, Math.round(Math.abs(v) * FX_SCALE[k] * m))) : v;
 function applyFx(S, fx, tag) {
   const out = [];
   for (let [k, v] of Object.entries(fx || {})) {
     if (!v) continue;
-    v = scaleFx(k, v);
+    v = scaleFx(k, v, S.fxMul || 1);
     if (k === 'stress' && v > 0) v = Math.round(v * S.stressMul * (tag === 'night' ? S.night : 1));
     if (k === 'rep' && v > 0) v = Math.round(v * S.repMul);
     if (METERS.includes(k) || STAT_KEYS.includes(k)) {
       const before = S[k];
-      S[k] = clamp(S[k] + v, 0, k === 'stress' || METERS.includes(k) ? 100 : 99);
-      const d = S[k] - before; if (d) out.push({ k, v: d });
+      S[k] = clamp(Math.round(S[k] + v), 0, k === 'stress' || METERS.includes(k) ? 100 : 99);
+      const d = Math.round(S[k] - before); if (d) out.push({ k, v: d });
     } else if (k === 'rev') { S.yearRev += v; out.push({ k, v }); }
     else if (k === 'sal') { S.sal = Math.max(200, S.sal + v); out.push({ k, v }); }
     else if (k === 'pay') { S.lifetime += v; out.push({ k, v }); }
@@ -1072,6 +1251,39 @@ function promote(S, to) {
   return { from, to, oldSal, newSal: S.sal };
 }
 
+/* ---------- pacing: time speeds up with age (ジャネーの法則) ----------
+   under 30: half-year cards (上期/下期) · 30–41: one card per year · 42+: one card per two years */
+const FX_MUL = { 0.5: 1, 1: 1.5, 2: 2.0 };
+function turnSpan(S) { if (S.age < 30) return 0.5; if (S.age < 42) return 1; return Math.max(1, Math.min(2, RETIRE() - S.age)); }
+function beginTurn(S) { S.span = turnSpan(S); S.fxMul = FX_MUL[S.span]; return S.span; }
+/* runs the year-end for every year the turn covers; returns the combined review */
+function yearEnd(S, icon) {
+  const n = Math.max(1, S.span || 1), agg = { rev: 0, bonus: 0, grade: 'B', promos: [], end: null, years: n };
+  for (let i = 0; i < n; i++) {
+    const r = endYear(S, icon);
+    agg.rev += r.rev; agg.bonus += r.bonus; agg.grade = r.grade; if (r.promo) agg.promos.push(r.promo);
+    if (r.end) { agg.end = r.end; break; }
+    S.age++; S.yearIdx++;
+    if (S.age >= RETIRE()) break;
+  }
+  return agg;
+}
+
+/* ---------- streak: 3+ successful rolls in a row pay a bonus ---------- */
+function applyStreak(S, success) {
+  if (success === true) {
+    S.streak = (S.streak || 0) + 1; S.maxStreak = Math.max(S.maxStreak || 0, S.streak);
+    if (S.streak >= 3) return { n: S.streak, deltas: applyFx(S, { mot: 5, rep: 3 }) };
+  } else if (success === false) S.streak = 0;
+  return null;
+}
+
+/* ---------- career title (称号) ---------- */
+function careerTitle(S, endId) {
+  for (const t of TITLES) { try { if (t.test(S, endId)) return t; } catch (e) { } }
+  return TITLES[TITLES.length - 1];
+}
+
 /* ---------- year end ---------- */
 function endYear(S, icon) {
   const m = MODULES[S.module];
@@ -1086,10 +1298,10 @@ function endYear(S, icon) {
   const before = { mot: S.mot, stress: S.stress, rep: S.rep };
   let dRep = perf * 12 + (rnd() * 6 - 3) + (50 - S.rep) * 0.08;
   if (dRep > 0) dRep *= S.repMul;
-  S.rep = clamp(S.rep + dRep, 0, 100);
+  S.rep = clamp(Math.round(S.rep + dRep), 0, 100);
   for (const k of ['tech', 'biz', 'comm']) S[k] = clamp(S[k] + Math.round(m.w[k] * 4 + rnd() * 1.2), 0, 99);
-  S.stress = clamp(S.stress - S.stress * 0.06 + (2 + S.lv * 1.1 - S.stamina / 35 + Math.max(0, S.age - 45) * 0.15) * S.stressMul, 0, 100);
-  S.mot = clamp(S.mot + (55 - S.mot) * 0.12 - (S.pers === 'ambitious' && S.yrsLv >= 5 ? 4 : 0), 0, 100);
+  S.stress = clamp(Math.round(S.stress - S.stress * 0.09 + (2 + S.lv * 1.1 - S.stamina / 40 + Math.max(0, S.age - 46) * 0.2) * S.stressMul), 0, 100);
+  S.mot = clamp(Math.round(S.mot + (55 - S.mot) * 0.12 - (S.pers === 'ambitious' && S.yrsLv >= 5 ? 4 : 0)), 0, 100);
   if (S.age >= 40) S.stamina = clamp(S.stamina - (S.age >= 55 ? 2 : 1), 0, 99);
   S.sal = Math.round(S.sal + Math.max(0, LEVELS[S.lv].sal * 0.015 + (S.rep - 50) / 6));
   const grade = perf >= .33 ? 'S' : perf >= .13 ? 'A' : perf >= -.07 ? 'B' : perf >= -.27 ? 'C' : 'D';
@@ -1123,7 +1335,7 @@ function tryBoomerang(S, endId) {
   const yrs = ri(1, 3);
   S.boomer = { kind: endId, yrs, from: S.age, tok: { ...S.tok } };
   S.hist.push({ age: S.age, lv: S.lv, rev: 0, sal: 0, mot: Math.round(S.mot), icon: '🪃', away: true });
-  S.age += yrs - 1;            // the next year's age++ completes the time away
+  S.age += yrs;
   S.rep = 45; S.yrsLv = 0;
   S.mot = clamp(S.mot + 15, 0, 100); S.stress = clamp(S.stress - 25, 0, 100);
   if (endId === 'startup') { S.biz = clamp(S.biz + 8, 0, 99); S.comm = clamp(S.comm + 5, 0, 99); }
@@ -1144,7 +1356,7 @@ function makeRun(S, endId, player) {
     gradJa: S.name.ja, gradEn: S.name.en, nat: S.nat, gender: S.g, startAge: S.age0, endAge: S.age,
     years: S.done, revenue: Math.round(S.revenue), peak: S.peak, yearsToPeak: S.peakYear,
     happy: happyScore(S), ending: endId,
-    look: JSON.stringify({ ...S.look, age: S.age, mood: (ENDINGS[endId] || {}).good ? 'happy' : 'neutral' }),
+    look: JSON.stringify({ ...S.look, age: S.age, mood: (ENDINGS[endId] || {}).good ? 'happy' : 'neutral', ttl: careerTitle(S, endId).id }),
   };
 }
 if (typeof module !== 'undefined') module.exports = {};
@@ -1754,7 +1966,7 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
 };
-let L = store.get('sg_lang', ((navigator.language || 'ja').toLowerCase().startsWith('ja') ? 'ja' : 'en'));
+let L = store.get('sg_lang', 'ja'); // Japanese by default; the EN button switches
 const tt = (o) => o == null ? '' : (typeof o === 'string' ? o : (o[L] ?? o.en ?? o.ja ?? ''));
 const $app = document.getElementById('app');
 const $ = (s, r = document) => r.querySelector(s);
@@ -1787,11 +1999,16 @@ function moneyShort(man) {
   if (L === 'ja') return man >= 10000 ? (man / 10000).toFixed(1).replace(/\.0$/, '') + '億' : Math.round(man) + '万';
   const y = man * 1e4; return y >= 1e9 ? '¥' + (y / 1e9).toFixed(1).replace(/\.0$/, '') + 'B' : '¥' + Math.round(y / 1e6) + 'M';
 }
-const signed = (v, f = (x) => x) => (v > 0 ? '+' : v < 0 ? '−' : '') + f(Math.abs(v));
+const signed = (v, f = (x) => Math.round(x)) => (v > 0 ? '+' : v < 0 ? '−' : '') + f(Math.abs(v));
 const yearsStr = (n) => L === 'ja' ? `${n}年` : `${n} yr${n === 1 ? '' : 's'}`;
 const ageStr = (a) => L === 'ja' ? `${a}歳` : `age ${a}`;
 const lvName = (i, short) => short ? (L === 'ja' ? LEVELS[i].sj : LEVELS[i].se) : tt(LEVELS[i]);
-const yearLabel = () => { const h = tt(S.half ? UI.h2 : UI.h1); return L === 'ja' ? `${S.yearIdx + 1}年目 ${h} · ${S.age}歳` : `Year ${S.yearIdx + 1} ${h} · Age ${S.age}`; };
+const yearLabel = () => {
+  const n = S.yearIdx + 1;
+  if (S.span === 2) return L === 'ja' ? `${n}〜${n + 1}年目 · ${S.age}〜${S.age + 1}歳` : `Yrs ${n}–${n + 1} · Age ${S.age}–${S.age + 1}`;
+  const h = S.span === 0.5 ? ' ' + tt(S.half ? UI.h2 : UI.h1) : '';
+  return L === 'ja' ? `${n}年目${h} · ${S.age}歳` : `Year ${n}${h} · Age ${S.age}`;
+};
 
 /* ---------- sound ---------- */
 const SFX = {
@@ -1987,7 +2204,7 @@ function hudHTML() {
     <div class="hh" id="hhead">${headSVG(S.look, { age: S.age, mood: moodOf(S) })}</div>
     <div class="l1"><span class="nm">${flagSVG(S.nat, 12)} ${esc(tt(S.name))}</span><span class="badge" id="hbadge" style="background:${LEVELS[S.lv].color}">${lvName(S.lv, true)}</span></div>
     <div class="money"><span>💴 <b id="hsal">${money(S.sal)}</b></span><span>🏢 <b id="hrev">${money(shownRev)}</b></span></div>
-    <div class="meters">${['mot', 'stress', 'rep'].map(k => `<div class="meter" title="${tt(UI[k])}">${ICON[k]}<div class="bar"><i id="m_${k}" style="width:${S[k]}%;background:${meterCol(k, S[k])}"></i></div></div>`).join('')}</div>
+    <div class="meters">${['mot', 'stress', 'rep'].map(k => `<div class="meter ${k === 'stress' && S.stress >= 80 ? 'danger' : ''}" title="${tt(UI[k])}">${ICON[k]}<div class="bar"><i id="m_${k}" style="width:${S[k]}%;background:${meterCol(k, S[k])}"></i></div></div>`).join('')}</div>
     <div class="prog"><i id="hprog" style="width:${progPct()}%"></i></div></div>`;
 }
 function updateHUD() {
@@ -1996,6 +2213,7 @@ function updateHUD() {
   const b = $('#hbadge'); b.textContent = lvName(S.lv, true); b.style.background = LEVELS[S.lv].color;
   $('#hsal').textContent = money(S.sal);
   for (const k of ['mot', 'stress', 'rep']) { const i = $('#m_' + k); i.style.width = S[k] + '%'; i.style.background = meterCol(k, S[k]); }
+  $('#m_stress').closest('.meter').classList.toggle('danger', S.stress >= 80);
   $('#hprog').style.width = progPct() + '%';
   const from = shownRev, to = S.revenue;
   if (from !== to) {
@@ -2008,47 +2226,65 @@ function updateHUD() {
 }
 function tipLine() {
   if (S.yearIdx === 0) return `<div class="status">${L === 'ja' ? '🔥やる気・⭐評価は高く、😰ストレスは低く!' : 'Keep 🔥 motivation & ⭐ rating high, 😰 stress low!'}</div>`;
-  if (S.yearIdx === 1) return `<div class="status">${L === 'ja' ? '😰が100で燃え尽き… 🎲は成功率' : '😰 at 100 = burnout · 🎲 % = success chance'}</div>`;
+  if (S.yearIdx === 1) return `<div class="status">${L === 'ja' ? '😰100で燃え尽き… 🎲は針を緑で止めるミニゲーム!' : '😰 at 100 = burnout · 🎲 = stop the needle in the green!'}</div>`;
   return '';
 }
 
 /* ---------- year flow ---------- */
 async function career() {
+  let lastSpan = 0;
   while (true) {
-    if (S.yearIdx > 0) S.age++;
     if (S.age >= RETIRE()) return endingScreen('retire');
+    const span = beginTurn(S);
+    if (lastSpan && span > lastSpan) await speedBanner(span);
+    lastSpan = span;
+    const halves = span === 0.5 ? 2 : 1;
     let away = false;
-    for (let half = 0; half < 2 && !away; half++) {
-      S.half = half;
+    for (let h = 0; h < halves && !away; h++) {
+      S.half = span === 0.5 ? h : -1;
+      const isLast = h === halves - 1;
       let ev = pickEvent(S);
       if (ev === 'quiet') {
-        const ye = half === 1 ? endYear(S, '☕') : null;
+        const ye = isLast ? yearEnd(S, '☕') : null;
         await quietYear(ye);
-        if (ye && ye.end) return endingScreen(ye.end);
-        if (ye && ye.promo) await promoScreen(ye.promo);
+        if (ye && await afterReview(ye)) return;
         continue;
       }
       while (ev) {
         rollTokens(S);
-        const { ch, res, deltas } = await eventCard(ev);
+        const { ch, res, deltas, streak } = await eventCard(ev);
         if (res.promote) res.promoInfo = promote(S, res.promote);
         if (res.end) {
           const bm = tryBoomerang(S, res.end);
-          await outcome(res, deltas, null, bm ? 'next' : 'end');
+          await outcome(res, deltas, null, bm ? 'next' : 'end', streak);
           if (bm) { await boomerangScreen(bm); away = true; break; }
           return endingScreen(res.end);
         }
-        if (res.next) { await outcome(res, deltas, null, 'next'); ev = EVMAP[res.next]; continue; }
-        const ye = half === 1 ? endYear(S, ch.icon) : null;
-        await outcome(res, deltas, ye, ye && ye.end ? 'end' : 'year');
+        if (res.next) { await outcome(res, deltas, null, 'next', streak); ev = EVMAP[res.next]; continue; }
+        const ye = isLast ? yearEnd(S, ch.icon) : null;
+        await outcome(res, deltas, ye, ye ? (ye.end ? 'end' : 'year') : 'next', streak);
         if (res.promoInfo) await promoScreen(res.promoInfo);
-        if (ye && ye.end) return endingScreen(ye.end);
-        if (ye && ye.promo) await promoScreen(ye.promo);
+        if (ye && await afterReview(ye)) return;
         ev = null;
       }
     }
-    S.yearIdx++;
   }
+}
+/* after a year-end review: ending or promotions; returns true when the career is over */
+async function afterReview(ye) {
+  if (ye.end) { endingScreen(ye.end); return true; }
+  for (const p of ye.promos) await promoScreen(p);
+  return false;
+}
+async function speedBanner(span) {
+  SFX.fan();
+  const two = span >= 2;
+  const ov = document.createElement('div'); ov.className = 'overlay';
+  ov.innerHTML = `<div class="card promo speed"><div class="spd-ic"><span class="spin-fast">🕰️</span></div>
+    <h3 class="spd">${tt(two ? UI.speed2 : UI.speed1)}</h3><div class="end-sub">${tt(two ? UI.speed2s : UI.speed1s)}</div>
+    <button class="btn primary big" id="pok" style="width:100%;margin-top:12px">OK</button></div>`;
+  document.body.appendChild(ov);
+  await Promise.race([tap($('#pok', ov)), wait(3800)]); ov.remove(); SFX.tap();
 }
 async function boomerangScreen(bm) {
   SFX.fan(); confetti(50);
@@ -2071,36 +2307,49 @@ function choiceHTML(c, i) {
   return `<button class="choice ${c.end ? 'end' : ''}" data-i="${i}"><span class="ic">${c.icon}</span><span>${esc(T(c.label))}</span>${pill}</button>`;
 }
 async function eventCard(ev) {
+  const gold = !!ev.gold;
   const el = screen(`${hudHTML()}
-    <div class="scene">${sceneSVG(ev.scene, S, { deco: ev.deco, id: ev.id })}<div class="yr-flag">${yearLabel()}</div><div class="floaters" id="fl"></div></div>
+    <div class="scene ${gold ? 'gold' : ''}">${sceneSVG(ev.scene, S, { deco: ev.deco, id: ev.id })}<div class="yr-flag">${yearLabel()}</div>${gold ? `<div class="ssr-tag">✨ ${tt(UI.ssr)} ✨</div>` : ''}<div class="floaters" id="fl"></div></div>
     <div class="ev-title">${esc(T(ev.title))}</div>${tipLine()}
     <div class="choices" id="choices">${ev.choices.map(choiceHTML).join('')}</div>`, 'year');
+  if (gold) { SFX.fan(); confetti(40); }
   const ch = await new Promise(res => $$('.choice', el).forEach(b => { b.onclick = () => res(ev.choices[+b.dataset.i]); }));
   SFX.tap();
   $$('.choice', el).forEach(b => { b.disabled = true; if (ev.choices[+b.dataset.i] !== ch) b.style.opacity = .3; });
   await wait(150);
-  const res = resolveChoice(S, ev, ch);
-  if (res.p != null) await gaugeAnim(res.p, res.roll);
-  else if (ch.mystery) await mysteryAnim();
+  const forced = ch.check ? await timingGame(checkP(S, ch.check)) : undefined;
+  const res = resolveChoice(S, ev, ch, forced);
+  if (ch.mystery) await mysteryAnim();
   const deltas = applyFx(S, res.fx, res.tag);
-  return { ch, res, deltas };
+  const streak = applyStreak(S, res.success);
+  return { ch, res, deltas, streak };
 }
-async function gaugeAnim(p, roll) {
-  const box = $('#choices');
-  box.innerHTML = `<div class="card gauge-box"><div class="gauge"><div class="zone" style="width:${p * 100}%"></div><div class="needle" id="needle"></div></div><div class="gauge-lbl">🎲 ${Math.round(p * 100)}%</div></div>`;
-  const nd = $('#needle'), target = roll * 100, D = 200 + target, dur = 1150, t0 = performance.now();
-  let lastSeg = -1;
-  await new Promise(res => {
+/* timing mini-game: the green zone is as wide as your success chance; tap to stop the needle inside it */
+function timingGame(p) {
+  const box = $('#choices'), z0 = Math.random() * (1 - p);
+  box.innerHTML = `<div class="card gauge-box tapzone"><div class="gauge"><div class="zone" style="left:${(z0 * 100).toFixed(1)}%;width:${(p * 100).toFixed(1)}%"></div><div class="needle" id="needle"></div></div>
+    <div class="gauge-lbl pulse">👆 ${tt(UI.tapStop)}</div><div class="status">🎲 ${Math.round(p * 100)}%</div></div>`;
+  const nd = $('#needle'), period = 700 + p * 900, t0 = performance.now();
+  let stopped = false, pos = 0, lastHalf = -1;
+  return new Promise(res => {
+    const finish = () => {
+      if (stopped) return; stopped = true; document.removeEventListener('pointerdown', onTap, true);
+      const ok = pos >= z0 * 100 - 1 && pos <= (z0 + p) * 100 + 1;
+      nd.classList.add(ok ? 'hit' : 'miss'); if (!ok) box.firstElementChild.classList.add('shake-x');
+      setTimeout(() => res(ok), 520);
+    };
+    const onTap = (e) => { e.preventDefault(); e.stopPropagation(); finish(); };
     const f = (now) => {
-      const u = Math.min(1, (now - t0) / dur), d = D * (1 - Math.pow(1 - u, 2.4));
-      const pos = d <= 100 ? d : d <= 200 ? 200 - d : d - 200;
-      nd.style.left = pos + '%';
-      const seg = Math.floor(d / 12); if (seg !== lastSeg) { lastSeg = seg; SFX.tick(); }
-      if (u < 1) requestAnimationFrame(f); else res();
+      if (stopped) return;
+      const el = now - t0, u = (el % period) / period;
+      pos = u < .5 ? u * 200 : (1 - u) * 200; nd.style.left = pos + '%';
+      const hf = Math.floor(el / (period / 2)); if (hf !== lastHalf) { lastHalf = hf; SFX.tick(); }
+      if (el > 4500) return finish();
+      requestAnimationFrame(f);
     };
     requestAnimationFrame(f);
+    setTimeout(() => { if (!stopped) document.addEventListener('pointerdown', onTap, true); }, 200);
   });
-  await wait(380);
 }
 async function mysteryAnim() {
   const box = $('#choices'), sy = ['🎟️', '❓', '🍀', '✨'];
@@ -2129,15 +2378,17 @@ function reviewHTML(ye) {
     <div>🏢 ${tt(UI.yearRev)} <b>+${money(ye.rev)}</b></div>
     <div>💴 ${tt(UI.bonus)} <b>+${money(ye.bonus)}</b></div></div></div>`;
 }
-async function outcome(res, deltas, ye, mode) {
+async function outcome(res, deltas, ye, mode, streak) {
+  if (streak) deltas = deltas.concat(streak.deltas);
   updateHUD(); floaters(deltas);
   if (res.success === true) SFX.ok(); else if (res.success === false) SFX.ng(); else SFX.coin();
   const resLine = res.success === true ? `<div class="res ok">✔ ${tt(UI.success)}</div>` : res.success === false ? `<div class="res ng">✘ ${tt(UI.fail)}</div>` : '';
   const txt = res.text ? `<div class="res-txt">${esc(T(res.text))}</div>` : '';
   const chips = deltas.map(deltaChip).join('');
   const sum = ye ? reviewHTML(ye) : '';
+  const stk = streak ? `<div class="streak">🔥×${streak.n} ${tt(UI.streak)}</div>` : '';
   const lbl = mode === 'end' ? `🎬 ${tt(UI.toEnding)}` : mode === 'next' ? `▶ ${tt(UI.cont)}` : `▶ ${tt(UI.next)}`;
-  $('#choices').innerHTML = `<div class="card outcome">${resLine}${txt}${chips ? `<div class="deltas">${chips}</div>` : ''}${sum}<button class="btn primary big" id="nx">${lbl}</button></div>`;
+  $('#choices').innerHTML = `<div class="card outcome">${resLine}${stk}${txt}${chips ? `<div class="deltas">${chips}</div>` : ''}${sum}<button class="btn primary big" id="nx">${lbl}</button></div>`;
   await tap($('#nx')); SFX.tap();
 }
 async function quietYear(ye) {
@@ -2152,7 +2403,7 @@ async function quietYear(ye) {
   const f = (now) => { const u = Math.min(1, (now - t0) / 900); $$('.qc .n', el).forEach(n => { n.textContent = Math.round(+n.dataset.n * u).toLocaleString(); }); if (u < 1) requestAnimationFrame(f); };
   requestAnimationFrame(f);
   setTimeout(updateHUD, 200); SFX.coin();
-  if (ye && (ye.end || ye.promo)) await tap($('#nx'));
+  if (ye && (ye.end || ye.promos.length)) await tap($('#nx'));
   else await Promise.race([tap($('#nx')), wait(ye ? 3600 : 2600)]);
   SFX.tap();
 }
@@ -2212,9 +2463,11 @@ async function endingScreen(endId) {
   const title = T(v.title), sub = T(v.sub);
   const acc = endId === 'retire' ? (S.peak === 7 ? 'crown bouquet' : 'bouquet') : '';
   const run = makeRun(S, endId, PLAYER);
+  const ttl = careerTitle(S, endId);
   const el = screen(`<div class="scene end-hero">${sceneSVG(E.scene, S, { mood: 'happy', acc, deco: endId === 'lottery' ? 'money' : null })}</div>
     <div class="end-title">${E.icon} ${esc(title)}</div><div class="end-sub">${esc(sub)}</div>
     <div class="who">${flagSVG(S.nat, 15)} ${esc(tt(S.name))} · ${ageStr(S.age)}</div>
+    <div class="card ttl-card"><div class="ttl-lb">🎖️ ${tt(UI.ttl)}</div><div class="ttl"><span class="ttl-ic">${ttl.icon}</span>${esc(tt(ttl))}</div></div>
     <div class="tiles">
       <div class="card tile"><div class="ic">🕰️</div><div class="lb">${tt(UI.tenure)}</div><div class="val">${yearsStr(run.years)}</div><div class="rk" id="rk_tenure"></div></div>
       <div class="card tile"><div class="ic">🏢</div><div class="lb">${tt(UI.revenue)}</div><div class="val">${money(run.revenue)}</div><div class="rk" id="rk_revenue"></div></div>
@@ -2235,8 +2488,8 @@ async function endingScreen(endId) {
   $('#home').onclick = () => { SFX.tap(); titleScreen(); };
   $('#share').onclick = () => {
     const text = L === 'ja'
-      ? `【新卒ガチャ】${tt(S.name)}(${tt(NATION[S.nat])})は${yearsStr(run.years)}在籍、売上貢献${money(run.revenue)}、最高役職は${lvName(run.peak)}。結末:${title}${E.icon}`
-      : `[Shinsotsu Gacha] ${tt(S.name)} (${tt(NATION[S.nat])}) stayed ${yearsStr(run.years)}, brought in ${money(run.revenue)}, peaked as ${lvName(run.peak)}. Ending: ${title} ${E.icon}`;
+      ? `【新卒ガチャ】${tt(S.name)}(${tt(NATION[S.nat])})は${yearsStr(run.years)}在籍、売上貢献${money(run.revenue)}、最高役職は${lvName(run.peak)}。称号「${tt(ttl)}」${ttl.icon} 結末:${title}${E.icon}`
+      : `[Shinsotsu Gacha] ${tt(S.name)} (${tt(NATION[S.nat])}) stayed ${yearsStr(run.years)}, brought in ${money(run.revenue)}, peaked as ${lvName(run.peak)}. Title: "${tt(ttl)}" ${ttl.icon} Ending: ${title} ${E.icon}`;
     if (navigator.share) navigator.share({ title: tt(UI.title), text, url: location.href }).catch(() => { });
     else if (navigator.clipboard) navigator.clipboard.writeText(text + ' ' + location.href).then(() => toast(tt(UI.copied)), () => { });
   };
@@ -2266,7 +2519,7 @@ async function leaderboardScreen(hl) {
       try { if (r.look && r.look.skin) head = headSVG(r.look, { age: r.look.age || 30, mood: 'happy' }); } catch (e) { }
       return `<div class="card lbi ${r.id === hl ? 'me' : ''} ${i === 0 ? 'top1' : ''}" style="animation-delay:${Math.min(i, 12) * .03}s">
         <div class="rk">${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</div>${head}
-        <div style="min-width:0"><div class="pn">${esc(r.player)}</div><div class="gn">${NATION[r.nat] ? flagSVG(r.nat, 10) : ''} ${esc(L === 'ja' ? (r.gradJa || '') : (r.gradEn || ''))} ${(ENDINGS[r.ending] || {}).icon || ''}</div></div>
+        <div style="min-width:0"><div class="pn">${esc(r.player)}</div><div class="gn">${NATION[r.nat] ? flagSVG(r.nat, 10) : ''} ${(ENDINGS[r.ending] || {}).icon || ''} ${r.look && TITLE_MAP[r.look.ttl] ? TITLE_MAP[r.look.ttl].icon + ' ' + esc(tt(TITLE_MAP[r.look.ttl])) : esc(L === 'ja' ? (r.gradJa || '') : (r.gradEn || ''))}</div></div>
         <div class="vv">${b.val(r)}${b.sub ? `<div class="gn" style="justify-content:flex-end">${b.sub(r)}</div>` : ''}</div></div>`;
     }).join('') : `<div class="card empty">${tt(UI.noRuns)}</div>`;
   };
