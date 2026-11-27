@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#ff5d73">
+<title>新卒ガチャ / Shinsotsu Gacha</title>
+<script>
+/* =====================================================================
+   ✏️  EDIT HERE — company settings & inside jokes
+   ---------------------------------------------------------------------
+   • Every text has a Japanese (ja) and English (en) version.
+   • GitHub Pages is PUBLIC: use nicknames, never real client names.
+   ===================================================================== */
+const CONFIG = {
+  // Google Apps Script web-app URL (see README). Leave '' = leaderboard on this device only.
+  leaderboardUrl: '',
+
+  // Change this for each event to start a fresh leaderboard (old runs stay in the sheet).
+  tripId: 'company-trip-2026',
+
+  retireAge: 65,
+
+  company: { ja: '〇〇コンサルティング', en: 'XX Consulting' },
+
+  // First one is HQ. Others appear in "transfer" events.
+  offices: [
+    { ja: '東京本社', en: 'Tokyo HQ' },
+    { ja: '大阪オフィス', en: 'the Osaka office' },
+    { ja: '名古屋オフィス', en: 'the Nagoya office' },
+    { ja: '福岡オフィス', en: 'the Fukuoka office' },
+  ],
+
+  // Client nicknames (shown in "{client} is furious" etc.)
+  clients: [
+    { ja: '某大手メーカー', en: 'Big Manufacturing Co.' },
+    { ja: '老舗商社', en: 'the old trading house' },
+    { ja: '急成長ベンチャー', en: 'the hypergrowth startup' },
+  ],
+
+  // Where poached employees go
+  rivals: [
+    { ja: '外資系コンサル', en: 'a global consulting giant' },
+    { ja: '大手SIer', en: 'a mega SIer' },
+    { ja: 'ライバルのOracleパートナー', en: 'a rival Oracle partner' },
+  ],
+
+  boss: { ja: '部長', en: 'the Boss' },
+
+  // The boss's famous catchphrases
+  catchphrases: [
+    { ja: 'とりあえずやってみよう', en: 'Just try it!' },
+    { ja: 'で、ROIは?', en: "So what's the ROI?" },
+  ],
+
+  // ---------------------------------------------------------------
+  // Your own events. Copy the example, remove the // and edit.
+  //   scene : office, night, meeting, classroom, izakaya, stage, server,
+  //           airport, phone, home, wedding, clinic, city, golf, cafe,
+  //           fire, train, vegas, boardroom, bus, magic
+  //   fx    : mot (motivation), stress, rep (rating), tech, biz, comm,
+  //           stamina, luck, rev (revenue, 万円), sal (salary raise, 万円)
+  //   check : a skill name -> success/fail roll (ok / ng results)
+  //   end   : poached, startup, earlyRetire, abroad, streamer, isekai ...
+  // ---------------------------------------------------------------
+  customEvents: [
+    // {
+    //   scene: 'izakaya', weight: 1, minAge: 22, maxAge: 65,
+    //   title: { ja: '伝説の〇〇さん主催の飲み会', en: "Legendary party by Mr. X" },
+    //   choices: [
+    //     { icon: '🍺', label: { ja: '参加', en: 'Join' }, fx: { mot: 10, stress: -5 } },
+    //     { icon: '🏃', label: { ja: '逃げる', en: 'Escape' }, check: 'luck',
+    //       ok: { fx: { mot: 5 }, text: { ja: '脱出成功', en: 'Got away!' } },
+    //       ng: { fx: { rep: -5 }, text: { ja: '捕まった', en: 'Caught!' } } },
+    //   ],
+    // },
+  ],
+};
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M8 50a42 42 0 0 1 84 0z' fill='%23ff5d73' stroke='%232b2d42' stroke-width='6'/%3E%3Cpath d='M8 50a42 42 0 0 0 84 0z' fill='%23fff' stroke='%232b2d42' stroke-width='6'/%3E%3C/svg%3E">
+<style>
+:root{--ink:#2b2d42;--bg:#fff6e9;--pink:#ff5d73;--yellow:#ffd166;--green:#20c997;--blue:#4dabf7;--purple:#9775fa;--muted:#6c727f;--good:#2b8a3e;--bad:#c92a2a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",Meiryo,system-ui,sans-serif}
+body{background-image:radial-gradient(#ffe0bd 1.6px,transparent 1.6px);background-size:18px 18px;min-height:100dvh;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+#app{max-width:460px;margin:0 auto;min-height:100dvh;position:relative;overflow-x:hidden}
+.screen{display:flex;flex-direction:column;gap:12px;padding:12px 14px calc(22px + env(safe-area-inset-bottom));min-height:100dvh;animation:fadeIn .25s ease}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;touch-action:manipulation}
+.btn{border:3px solid var(--ink);border-radius:16px;background:#fff;padding:12px 16px;font-weight:900;font-size:17px;box-shadow:0 5px 0 var(--ink);transition:transform .06s,box-shadow .06s;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.2}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+.btn.primary{background:var(--pink);color:#fff}
+.btn.yellow{background:var(--yellow)}
+.btn.big{font-size:22px;padding:15px}
+.btn.small{font-size:14px;padding:6px 11px;border-radius:12px;box-shadow:0 3px 0 var(--ink)}
+.btn.small:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.center{text-align:center}
+.pulse{animation:pulse 1.3s ease-in-out infinite}
+.topbar{display:flex;justify-content:flex-end;gap:8px}
+.card{background:#fff;border:3px solid var(--ink);border-radius:20px;box-shadow:0 6px 0 var(--ink)}
+.muted{color:var(--muted)}
+
+/* title */
+.logo{text-align:center;margin-top:4px}
+.logo h1{margin:0;font-size:50px;line-height:1.05;color:var(--pink);-webkit-text-stroke:2.5px var(--ink);paint-order:stroke fill;text-shadow:0 5px 0 var(--ink);letter-spacing:2px}
+.logo h1.en{font-size:38px}
+.logo .sub{font-weight:900;font-size:15px;margin-bottom:6px}
+.machine-wrap{display:flex;justify-content:center;position:relative}
+.machine{width:62%;max-width:250px;height:auto;overflow:visible}
+.gacha .machine{width:74%;max-width:300px;cursor:pointer}
+.machine .cap{animation:bob 1.6s ease-in-out infinite}
+.machine.shaking{animation:shake .5s ease 2}
+.machine.shaking .cap{animation:jiggle .25s linear infinite}
+.handle.turn{animation:turn .8s cubic-bezier(.5,0,.3,1)}
+.how{display:flex;align-items:center;justify-content:center;gap:6px}
+.how .st{background:#fff;border:3px solid var(--ink);border-radius:16px;padding:8px 6px;width:30%;text-align:center;font-weight:900;font-size:12.5px;box-shadow:0 4px 0 var(--ink)}
+.how .st b{display:block;font-size:26px;line-height:1.2}
+.how .ar{font-weight:900;font-size:18px}
+.company{text-align:center;font-weight:900;color:var(--muted);font-size:13px}
+.hint{text-align:center;font-weight:900;font-size:22px}
+.screen.gacha{justify-content:center;gap:24px}
+.tapme{position:absolute;font-size:44px;animation:tap 1s ease-in-out infinite;pointer-events:none}
+
+/* capsule reveal */
+.overlay{position:fixed;inset:0;background:rgba(43,45,66,.6);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px;animation:fadeIn .2s ease}
+.overlay.clear{background:transparent}
+.capsule{width:180px;height:180px;overflow:visible}
+.capsule.drop{animation:capDrop .7s cubic-bezier(.3,1.5,.6,1)}
+.capsule.wiggle{animation:wiggle .35s ease 3}
+.capsule .cap-top,.capsule .cap-bot{transition:transform .45s cubic-bezier(.3,1.4,.6,1),opacity .45s}
+.capsule.open .cap-top{transform:translate(-40px,-70px) rotate(-35deg);opacity:0}
+.capsule.open .cap-bot{transform:translate(40px,70px) rotate(25deg);opacity:0}
+.burst{position:absolute;width:520px;height:520px;border-radius:50%;opacity:0;pointer-events:none}
+.burst.on{animation:burst .7s ease-out forwards}
+.rays{position:absolute;inset:-40%;pointer-events:none;animation:spin 12s linear infinite;opacity:.55}
+
+/* grad card */
+.gcard{position:relative;padding:14px;overflow:hidden;animation:popIn .45s cubic-bezier(.3,1.5,.6,1)}
+.rar{position:absolute;top:10px;left:10px;font-weight:900;font-size:26px;padding:2px 12px;border:3px solid var(--ink);border-radius:12px;color:#fff;-webkit-text-stroke:1px var(--ink);paint-order:stroke fill;box-shadow:0 3px 0 var(--ink);z-index:2}
+.rar.UR{background:linear-gradient(90deg,#ff5d73,#ffd43b,#69db7c,#4dabf7,#9775fa);animation:hue 3s linear infinite}
+.portrait{border:3px solid var(--ink);border-radius:16px;display:flex;justify-content:center;align-items:flex-end;height:200px;overflow:hidden;position:relative}
+.portrait .av{height:190px;width:auto;position:relative;z-index:1}
+.gname{font-size:26px;font-weight:900;text-align:center;margin:10px 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.chip{display:inline-flex;align-items:center;gap:5px;border:2.5px solid var(--ink);border-radius:999px;padding:3px 10px;font-weight:900;font-size:14px;background:#fff}
+.chip .flag{border-radius:3px}
+.stats{display:grid;gap:7px;margin-top:12px}
+.stat{display:grid;grid-template-columns:28px 76px 1fr 30px;align-items:center;gap:6px;font-weight:900;font-size:14px}
+.stat .ic{font-size:20px;text-align:center}
+.bar{height:14px;border:2.5px solid var(--ink);border-radius:999px;background:#f1f3f5;overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:999px;transition:width .6s cubic-bezier(.3,1.3,.6,1)}
+.stat .v{text-align:right;font-variant-numeric:tabular-nums}
+
+/* wheel */
+.wheel-wrap{display:flex;justify-content:center}
+.wheel{width:88%;max-width:340px;height:auto}
+#wheelRot{transition:transform 3.4s cubic-bezier(.12,.75,.12,1)}
+.wres{min-height:64px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:26px;font-weight:900}
+.wres .big{font-size:46px;animation:popIn .4s cubic-bezier(.3,1.5,.6,1)}
+
+/* HUD */
+.hud{padding:8px 10px;display:grid;grid-template-columns:54px 1fr;gap:4px 10px;align-items:center;position:sticky;top:6px;z-index:5}
+.hud .hh{grid-row:span 2;display:flex}
+.hud .head{width:54px;height:54px;border:2.5px solid var(--ink);border-radius:14px;background:#e7f5ff;display:block}
+.hud .l1{display:flex;align-items:center;justify-content:space-between;gap:6px;font-weight:900;font-size:14px;min-width:0}
+.hud .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{display:inline-block;border:2.5px solid var(--ink);border-radius:999px;padding:1px 8px;font-weight:900;font-size:12px;white-space:nowrap;background:#fff}
+.money{display:flex;gap:12px;font-weight:900;font-size:13px;white-space:nowrap}
+.money b{font-variant-numeric:tabular-nums}
+.meters{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.meter{display:flex;align-items:center;gap:4px;font-size:16px}
+.meter .bar{flex:1;height:12px}
+.prog{grid-column:1/-1;position:relative;height:8px;border-radius:999px;background:#e9ecef;border:2px solid var(--ink);margin-top:2px}
+.prog>i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--yellow),var(--pink));border-radius:999px;transition:width .5s}
+.bump{animation:bump .5s ease}
+
+/* scene */
+.scene{position:relative;border:3px solid var(--ink);border-radius:20px;overflow:hidden;box-shadow:0 6px 0 var(--ink);aspect-ratio:360/220;background:#fff}
+.scene-svg{display:block;width:100%;height:100%}
+.yr-flag{position:absolute;top:8px;left:8px;background:var(--ink);color:#fff;font-weight:900;font-size:13px;padding:3px 10px;border-radius:999px}
+.floaters{position:absolute;inset:0;pointer-events:none}
+.fl{position:absolute;font-weight:900;font-size:22px;-webkit-text-stroke:1px #fff;paint-order:stroke fill;animation:floatUp 1.6s ease-out forwards;white-space:nowrap}
+.ev-title{font-size:22px;font-weight:900;text-align:center;line-height:1.3;padding:0 4px;animation:popIn .35s ease}
+.choices{display:grid;gap:10px}
+.choice{display:grid;grid-template-columns:44px 1fr auto;align-items:center;text-align:left;gap:8px;border:3px solid var(--ink);border-radius:18px;background:#fff;padding:10px 12px;font-weight:900;font-size:18px;box-shadow:0 5px 0 var(--ink);transition:transform .06s,box-shadow .06s;animation:slideUp .35s cubic-bezier(.3,1.3,.6,1) backwards}
+.choice:nth-child(2){animation-delay:.06s}.choice:nth-child(3){animation-delay:.12s}
+.choice:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+.choice .ic{font-size:32px;text-align:center}
+.chance{font-size:14px;font-weight:900;border:2.5px solid var(--ink);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.chance.hi{background:#b2f2bb}.chance.mid{background:#ffec99}.chance.lo{background:#ffc9c9}.chance.q{background:#e5dbff}
+.choice.end{background:#fff0f6}
+.choice .tag{font-size:16px}
+
+/* gauge */
+.gauge-box{padding:14px;display:grid;gap:8px;justify-items:center}
+.gauge{position:relative;width:100%;height:34px;border:3px solid var(--ink);border-radius:12px;background:#ffc9c9;overflow:hidden}
+.gauge .zone{position:absolute;left:0;top:0;bottom:0;background:#8ce99a;border-right:3px dashed var(--ink)}
+.gauge .needle{position:absolute;top:-2px;bottom:-2px;width:6px;margin-left:-3px;background:var(--ink);border-radius:3px}
+.gauge-lbl{font-weight:900;font-size:18px}
+
+/* outcome */
+.outcome{padding:12px;display:grid;gap:10px;animation:popIn .35s cubic-bezier(.3,1.4,.6,1)}
+.res{font-size:28px;font-weight:900;text-align:center}
+.res.ok{color:var(--good)}.res.ng{color:var(--bad)}
+.res-txt{text-align:center;font-weight:900;font-size:17px}
+.deltas{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.d{font-weight:900;font-size:15px;border:2.5px solid var(--ink);border-radius:999px;padding:3px 10px;background:#fff}
+.d.good{background:#d3f9d8}.d.bad{background:#ffe3e3}
+.yr-sum{display:flex;justify-content:center;gap:14px;font-weight:900;font-size:14px;border-top:2.5px dashed #ced4da;padding-top:8px;flex-wrap:wrap}
+.quiet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.qc{text-align:center;font-weight:900;padding:8px 4px}
+.qc b{display:block;font-size:30px}
+.qc .n{font-size:20px;font-variant-numeric:tabular-nums}
+.qc small{font-size:11px;color:var(--muted)}
+
+/* promotion */
+.promo{padding:18px;text-align:center;width:100%;max-width:360px;animation:popIn .5s cubic-bezier(.3,1.6,.6,1)}
+.promo h2{margin:0;font-size:36px;color:var(--pink);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-shadow:0 4px 0 var(--ink)}
+.promo .av{height:150px}
+.promo .arrow{font-size:26px;line-height:1.1}
+.promo .to{font-size:24px;padding:4px 16px;animation:bump .6s ease .3s}
+
+/* ending */
+.end-hero{position:relative}
+.end-title{font-size:28px;font-weight:900;text-align:center;line-height:1.25;margin-top:4px}
+.end-sub{text-align:center;font-weight:900;color:var(--muted)}
+.who{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:900;flex-wrap:wrap}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{padding:10px;text-align:center}
+.tile .ic{font-size:26px}
+.tile .lb{font-size:12px;font-weight:900;color:var(--muted)}
+.tile .val{font-size:22px;font-weight:900;font-variant-numeric:tabular-nums}
+.tile .rk{font-size:12px;font-weight:900;margin-top:2px;min-height:15px}
+.tile.wide{grid-column:1/-1}
+.sect{padding:12px}
+.sect h3{margin:0 0 8px;font-size:15px}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;font-weight:900;font-size:12px;padding:5px 8px;border-radius:8px;white-space:nowrap;transform:translate(-50%,-110%);display:none}
+.strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}
+.yc{flex:0 0 auto;width:44px;text-align:center;font-weight:900;font-size:11px;border:2px solid var(--ink);border-radius:10px;padding:3px 0;background:#fff}
+.yc b{display:block;font-size:20px}
+.yc.promo-y{background:#fff3bf}
+
+/* leaderboard */
+.lb-head{display:flex;align-items:center;justify-content:space-between}
+.lb-head h2{margin:0;font-size:26px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tab{border:3px solid var(--ink);border-radius:14px;background:#fff;font-weight:900;font-size:12px;padding:6px 2px;box-shadow:0 3px 0 var(--ink)}
+.tab b{display:block;font-size:22px}
+.tab.on{background:var(--yellow);transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.lb-list{display:grid;gap:8px}
+.lbi{display:grid;grid-template-columns:34px 44px 1fr auto;align-items:center;gap:8px;padding:6px 10px;animation:slideUp .3s ease backwards}
+.lbi .rk{font-size:22px;font-weight:900;text-align:center}
+.lbi .head{width:44px;height:44px;border:2px solid var(--ink);border-radius:12px;background:#e7f5ff}
+.lbi .pn{font-weight:900;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lbi .gn{font-size:12px;font-weight:900;color:var(--muted);display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden}
+.lbi .vv{font-weight:900;font-size:17px;text-align:right;font-variant-numeric:tabular-nums}
+.lbi.me{background:#fff3bf}
+.lbi.top1{background:#fff9db}
+.toggle{display:flex;align-items:center;gap:6px;font-weight:900;font-size:13px}
+.status{font-size:12px;font-weight:900;color:var(--muted);text-align:center}
+.empty{padding:30px;text-align:center;font-weight:900;color:var(--muted)}
+
+/* name modal */
+.modal{padding:18px;width:100%;max-width:360px;display:grid;gap:12px;animation:popIn .35s cubic-bezier(.3,1.5,.6,1)}
+.modal h2{margin:0;text-align:center}
+.modal input{font:inherit;font-size:22px;font-weight:900;border:3px solid var(--ink);border-radius:14px;padding:10px 12px;width:100%;text-align:center;-webkit-user-select:text;user-select:text}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;font-weight:900;padding:10px 16px;border-radius:999px;z-index:99;animation:popIn .3s ease}
+
+/* confetti */
+.confetti{position:fixed;top:-20px;width:10px;height:14px;z-index:60;pointer-events:none;animation:confetti linear forwards}
+
+/* svg animation classes */
+.blink{animation:blink 1s steps(2) infinite}
+.twinkle{animation:twinkle 1.8s ease-in-out infinite}
+.glow{animation:glow 2s ease-in-out infinite}
+.float{animation:floaty 2.4s ease-in-out infinite}
+.fall{animation:fall 3.5s linear infinite}
+.slide{animation:slide 6s linear infinite}
+.spin-slow{animation:spin 10s linear infinite}
+.flicker{animation:flicker .5s ease-in-out infinite alternate}
+.steam path{animation:steam 2s ease-in-out infinite}
+.wobble{animation:wobble 1.2s ease-in-out infinite}
+.liftoff{animation:liftoff 2.4s ease-in-out infinite}
+.orbit{animation:spin 6s linear infinite}
+.fly{animation:fly 5s ease-in-out infinite}
+.shake-soft{animation:shakeSoft .4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.pulse-soft{animation:pulseSoft .8s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes jiggle{0%{transform:translate(0,0)}25%{transform:translate(3px,-4px)}50%{transform:translate(-3px,2px)}75%{transform:translate(2px,4px)}100%{transform:translate(0,0)}}
+@keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-3deg)}75%{transform:rotate(3deg)}}
+@keyframes turn{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes tap{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-6px,6px) scale(.9)}}
+@keyframes capDrop{from{transform:translateY(-260px) scale(.4)}to{transform:translateY(0) scale(1)}}
+@keyframes wiggle{0%,100%{transform:rotate(0)}30%{transform:rotate(-12deg)}70%{transform:rotate(12deg)}}
+@keyframes burst{0%{opacity:.95;transform:scale(.2)}100%{opacity:0;transform:scale(1.6)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes popIn{0%{opacity:0;transform:scale(.7)}100%{opacity:1;transform:scale(1)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes floatUp{0%{opacity:0;transform:translateY(10px) scale(.8)}15%{opacity:1;transform:translateY(0) scale(1.1)}100%{opacity:0;transform:translateY(-70px) scale(1)}}
+@keyframes bump{0%,100%{transform:scale(1)}40%{transform:scale(1.18)}}
+@keyframes hue{to{filter:hue-rotate(360deg)}}
+@keyframes blink{50%{opacity:.25}}
+@keyframes twinkle{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes glow{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes fall{0%{transform:translateY(-40px)}100%{transform:translateY(240px)}}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-120px)}}
+@keyframes flicker{from{transform:scale(1,1)}to{transform:scale(.92,1.08)}}
+@keyframes steam{0%{opacity:0;transform:translateY(4px)}50%{opacity:.9}100%{opacity:0;transform:translateY(-8px)}}
+@keyframes wobble{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes liftoff{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes fly{0%,100%{transform:translate(0,0)}50%{transform:translate(-30px,6px)}}
+@keyframes shakeSoft{0%,100%{transform:rotate(0)}25%{transform:rotate(-1.5deg)}75%{transform:rotate(1.5deg)}}
+@keyframes pulseSoft{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+@keyframes confetti{to{transform:translateY(110vh) rotate(720deg)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ============================ GAME DATA ============================ */
+const RETIRE = () => (CONFIG.retireAge || 65);
+
+const LEVELS = [
+  { ja: 'アナリスト', en: 'Analyst', sj: 'アナリスト', se: 'Analyst', sal: 420, rev: 1200, yrs: 2, rep: 52, slot: 1, color: '#adb5bd' },
+  { ja: 'コンサルタント', en: 'Consultant', sj: 'コンサルタント', se: 'Consultant', sal: 540, rev: 1800, yrs: 2, rep: 60, slot: 1, color: '#4dabf7' },
+  { ja: 'シニアコンサルタント', en: 'Senior Consultant', sj: 'シニアコンサル', se: 'Sr. Consultant', sal: 680, rev: 2600, yrs: 3, rep: 68, slot: 0.8, color: '#38d9a9' },
+  { ja: 'マネージャー', en: 'Manager', sj: 'マネージャー', se: 'Manager', sal: 900, rev: 4000, yrs: 4, rep: 76, slot: 0.5, color: '#fcc419' },
+  { ja: 'シニアマネージャー', en: 'Senior Manager', sj: 'シニアマネージャー', se: 'Sr. Manager', sal: 1150, rev: 6000, yrs: 4, rep: 84, slot: 0.3, color: '#ff922b' },
+  { ja: 'ディレクター', en: 'Director', sj: 'ディレクター', se: 'Director', sal: 1450, rev: 8500, yrs: 5, rep: 90, slot: 0.2, color: '#f06595' },
+  { ja: 'パートナー', en: 'Partner', sj: 'パートナー', se: 'Partner', sal: 2000, rev: 12000, yrs: 99, rep: 999, slot: 1, color: '#9775fa' },
+  { ja: '社長', en: 'CEO', sj: '社長', se: 'CEO', sal: 3200, rev: 18000, yrs: 99, rep: 999, slot: 1, color: '#e8590c' },
+];
+
+const MODULES = {
+  FIN:   { icon: '💹', ja: '会計', en: 'Financials',   w: { tech: .25, biz: .55, comm: .20 }, majors: ['acct', 'econ', 'math'], color: '#4dabf7' },
+  SCM:   { icon: '🚚', ja: 'SCM',  en: 'Supply Chain', w: { tech: .30, biz: .50, comm: .20 }, majors: ['mech', 'econ'], color: '#38d9a9' },
+  HCM:   { icon: '👥', ja: '人事', en: 'HCM',          w: { tech: .20, biz: .35, comm: .45 }, majors: ['psych', 'law', 'lit'], color: '#f783ac' },
+  DEV:   { icon: '🛠️', ja: '開発', en: 'Tech / Dev',   w: { tech: .70, biz: .10, comm: .20 }, majors: ['cs', 'math'], color: '#9775fa' },
+  OCI:   { icon: '☁️', ja: 'クラウド', en: 'Cloud / OCI', w: { tech: .75, biz: .05, comm: .20 }, majors: ['cs', 'mech'], color: '#74c0fc' },
+  SALES: { icon: '🤝', ja: '営業', en: 'Presales',     w: { tech: .15, biz: .30, comm: .55 }, majors: ['intl', 'sports', 'lit', 'phil'], color: '#ffa94d' },
+};
+const MODULE_KEYS = Object.keys(MODULES);
+
+const MAJORS = [
+  { id: 'cs',     icon: '💻', ja: '情報工学',     en: 'Computer Sci.',  mod: { tech: 20 } },
+  { id: 'econ',   icon: '📈', ja: '経済学',       en: 'Economics',      mod: { biz: 15 } },
+  { id: 'acct',   icon: '🧾', ja: '会計学',       en: 'Accounting',     mod: { biz: 20 } },
+  { id: 'lit',    icon: '📚', ja: '文学',         en: 'Literature',     mod: { comm: 10, luck: 5 } },
+  { id: 'law',    icon: '⚖️', ja: '法学',         en: 'Law',            mod: { biz: 10, comm: 5 } },
+  { id: 'mech',   icon: '⚙️', ja: '機械工学',     en: 'Mech. Eng.',     mod: { tech: 10, biz: 5 } },
+  { id: 'math',   icon: '🧮', ja: '数学',         en: 'Mathematics',    mod: { tech: 15 } },
+  { id: 'art',    icon: '🎨', ja: '美術',         en: 'Fine Arts',      mod: { comm: 5, luck: 10 } },
+  { id: 'sports', icon: '⚽', ja: 'スポーツ科学', en: 'Sports Sci.',    mod: { stamina: 25 } },
+  { id: 'intl',   icon: '🌏', ja: '国際関係',     en: 'Intl. Relations', mod: { comm: 15 } },
+  { id: 'phil',   icon: '🤔', ja: '哲学',         en: 'Philosophy',     mod: { biz: 5, comm: 5, luck: 5 } },
+  { id: 'psych',  icon: '🧠', ja: '心理学',       en: 'Psychology',     mod: { comm: 15 } },
+];
+
+const DEGREES = [
+  { id: 'ba',  ja: '学士', en: 'BA/BS', w: 75, ages: [22, 22, 22, 22, 22, 23, 23, 24], bonus: 0 },
+  { id: 'ms',  ja: '修士', en: 'MSc',   w: 22, ages: [24, 24, 24, 25, 26], bonus: 8 },
+  { id: 'phd', ja: '博士', en: 'PhD',   w: 3,  ages: [27, 28, 29], bonus: 15 },
+];
+
+const PERSONALITIES = [
+  { id: 'jock',      icon: '🏉', ja: '体育会系', en: 'Team Jock',     mod: { stamina: 20, comm: 5 }, stressMul: .85 },
+  { id: 'otaku',     icon: '🎮', ja: 'オタク',   en: 'Otaku',         mod: { tech: 15, comm: -10 }, glasses: .6 },
+  { id: 'party',     icon: '🎉', ja: '陽キャ',   en: 'Party Animal',  mod: { comm: 20 }, mot: 10 },
+  { id: 'perfect',   icon: '🧐', ja: '完璧主義', en: 'Perfectionist', mod: { biz: 10, tech: 5 }, stressMul: 1.25, repMul: 1.15 },
+  { id: 'chill',     icon: '🦥', ja: 'マイペース', en: 'Easygoing',   mod: {}, stressMul: .7, repMul: .85 },
+  { id: 'ambitious', icon: '🦁', ja: '野心家',   en: 'Ambitious',     mod: { biz: 5 }, repMul: 1.25, stressMul: 1.1 },
+  { id: 'owl',       icon: '🦉', ja: '夜型',     en: 'Night Owl',     mod: { tech: 5 }, night: .5 },
+  { id: 'lucky',     icon: '🍀', ja: '天然',     en: 'Lucky Airhead', mod: { luck: 30, biz: -10 } },
+  { id: 'strat',     icon: '♟️', ja: '策士',     en: 'Strategist',    mod: { biz: 15, comm: 5 } },
+  { id: 'craft',     icon: '🔨', ja: '職人気質', en: 'Craftsperson',  mod: { tech: 15, comm: -5 } },
+  { id: 'healer',    icon: '🌸', ja: '癒し系',   en: 'Ray of Sunshine', mod: { comm: 10 }, stressMul: .9, mot: 5 },
+];
+
+/* skin & hair palettes */
+const SKINS = {
+  ea:  ['#fbe0c8', '#f5d0b0', '#eec39e'],
+  sea: ['#e8b48c', '#d9a074', '#c98d60'],
+  sa:  ['#c98d60', '#a86f45', '#8d5a37'],
+  eu:  ['#fde4d3', '#f6d5c0', '#efc4a8'],
+  mix: ['#fbe0c8', '#f1c9a5', '#e0ac84', '#c68a5c', '#8d5a37', '#5e3a22'],
+};
+const HAIRS = {
+  dark: ['#1d1b22', '#2a211b', '#33251c'],
+  jp:   ['#1d1b22', '#1d1b22', '#2a211b', '#33251c', '#1d1b22', '#6b4a2e'],
+  eu:   ['#e3c16f', '#8a5a33', '#5a3a22', '#1d1b22', '#b0532c'],
+  mix:  ['#1d1b22', '#3b2a1e', '#8a5a33', '#e3c16f', '#1d1b22'],
+};
+const SUITS = ['#2b3a55', '#1f2937', '#3d4b5c', '#4a3f35', '#2f4858', '#4c4f8a', '#22303c'];
+const TIES = ['#e63946', '#f4a261', '#2a9d8f', '#457b9d', '#9b5de5', '#ffbe0b', '#ef476f'];
+
+/* name pools: [english, japanese-display] */
+const N = (s) => s.split(',').map(p => p.split(':'));
+const NATIONS = [
+  { code: 'JP', ja: '日本', en: 'Japan', w: 80, skin: 'ea', hair: 'jp', style: 'jp',
+    fam: N('Sato:佐藤,Suzuki:鈴木,Takahashi:高橋,Tanaka:田中,Ito:伊藤,Watanabe:渡辺,Yamamoto:山本,Nakamura:中村,Kobayashi:小林,Kato:加藤,Yoshida:吉田,Yamada:山田,Sasaki:佐々木,Matsumoto:松本,Inoue:井上,Kimura:木村,Hayashi:林,Shimizu:清水,Mori:森,Ikeda:池田'),
+    m: N('Shota:翔太,Daiki:大輝,Takumi:拓海,Ren:蓮,Yuto:悠斗,Kenta:健太,Riku:陸,Sota:颯太,Minato:湊,Yamato:大和,Haruto:陽翔,Kaito:海斗'),
+    f: N('Hina:陽菜,Yui:結衣,Misaki:美咲,Sakura:さくら,Aoi:葵,Rin:凛,Nanami:七海,Riko:莉子,Mei:芽依,Kaede:楓,Mio:澪,Yuna:優奈') },
+  { code: 'CN', ja: '中国', en: 'China', w: 5, skin: 'ea', hair: 'dark', style: 'cn',
+    fam: N('Wang:王,Li:李,Zhang:張,Liu:劉,Chen:陳,Yang:楊'), m: N('Wei:偉,Hao:浩,Jie:傑,Lei:磊'), f: N('Jing:静,Ting:婷,Xue:雪,Yan:燕') },
+  { code: 'KR', ja: '韓国', en: 'Korea', w: 3, skin: 'ea', hair: 'dark', style: 'ff',
+    fam: N('Kim:キム,Lee:イ,Park:パク,Choi:チェ,Jung:チョン'), m: N('Minjun:ミンジュン,Jihoon:ジフン,Seojun:ソジュン'), f: N('Seoyeon:ソヨン,Jiwoo:ジウ,Hayoon:ハユン') },
+  { code: 'VN', ja: 'ベトナム', en: 'Vietnam', w: 3, skin: 'sea', hair: 'dark', style: 'ff',
+    fam: N('Nguyen:グエン,Tran:チャン,Le:レ,Pham:ファム'), m: N('Minh:ミン,Duc:ドゥック,Huy:フイ'), f: N('Linh:リン,Lan:ラン,Mai:マイ') },
+  { code: 'IN', ja: 'インド', en: 'India', w: 2, skin: 'sa', hair: 'dark', style: 'gf',
+    fam: N('Sharma:シャルマ,Patel:パテル,Kumar:クマール,Reddy:レッディ'), m: N('Arjun:アルジュン,Rahul:ラフル,Vikram:ヴィクラム'), f: N('Priya:プリヤ,Ananya:アナニャ,Divya:ディヴィヤ') },
+  { code: 'PH', ja: 'フィリピン', en: 'Philippines', w: 1.5, skin: 'sea', hair: 'dark', style: 'gf',
+    fam: N('Santos:サントス,Reyes:レイエス,Cruz:クルーズ'), m: N('Mark:マーク,Paolo:パオロ,John:ジョン'), f: N('Maria:マリア,Angel:エンジェル,Joy:ジョイ') },
+  { code: 'US', ja: 'アメリカ', en: 'USA', w: 1.2, skin: 'mix', hair: 'mix', style: 'gf',
+    fam: N('Smith:スミス,Johnson:ジョンソン,Brown:ブラウン,Miller:ミラー'), m: N('James:ジェームズ,Ethan:イーサン,Michael:マイケル'), f: N('Emily:エミリー,Olivia:オリビア,Sarah:サラ') },
+  { code: 'ID', ja: 'インドネシア', en: 'Indonesia', w: 1, skin: 'sea', hair: 'dark', style: 'gf',
+    fam: N('Wijaya:ウィジャヤ,Santoso:サントソ,Pratama:プラタマ'), m: N('Budi:ブディ,Adi:アディ'), f: N('Sari:サリ,Putri:プトリ') },
+  { code: 'BR', ja: 'ブラジル', en: 'Brazil', w: .8, skin: 'mix', hair: 'mix', style: 'gf', nikkei: .35,
+    fam: N('Silva:シルバ,Oliveira:オリヴェイラ,Santos:サントス'), m: N('Pedro:ペドロ,Gabriel:ガブリエル'), f: N('Ana:アナ,Julia:ジュリア') },
+  { code: 'NP', ja: 'ネパール', en: 'Nepal', w: .8, skin: 'sa', hair: 'dark', style: 'gf',
+    fam: N('Gurung:グルン,Thapa:タパ,Shrestha:シュレスタ'), m: N('Bikash:ビカシュ,Suman:スマン'), f: N('Sita:シタ,Anjali:アンジャリ') },
+  { code: 'TH', ja: 'タイ', en: 'Thailand', w: .7, skin: 'sea', hair: 'dark', style: 'gf',
+    fam: N('Srisuk:シースック,Chaiyaporn:チャイヤポーン'), m: N('Somchai:ソムチャイ,Narong:ナロン'), f: N('Malee:マリー,Ploy:プロイ') },
+  { code: 'GB', ja: 'イギリス', en: 'UK', w: .4, skin: 'eu', hair: 'eu', style: 'gf',
+    fam: N('Taylor:テイラー,Wilson:ウィルソン'), m: N('Oliver:オリバー,Harry:ハリー'), f: N('Amelia:アメリア,Grace:グレース') },
+  { code: 'FR', ja: 'フランス', en: 'France', w: .3, skin: 'eu', hair: 'eu', style: 'gf',
+    fam: N('Martin:マルタン,Dubois:デュボワ'), m: N('Lucas:リュカ,Hugo:ユーゴ'), f: N('Camille:カミーユ,Chloé:クロエ') },
+  { code: 'DE', ja: 'ドイツ', en: 'Germany', w: .3, skin: 'eu', hair: 'eu', style: 'gf',
+    fam: N('Müller:ミュラー,Schmidt:シュミット'), m: N('Lukas:ルーカス,Felix:フェリックス'), f: N('Hannah:ハンナ,Lena:レーナ') },
+];
+const NATION = Object.fromEntries(NATIONS.map(n => [n.code, n]));
+
+const RARITIES = [
+  { id: 'N',   min: 0,   color: '#adb5bd', cap: ['#ced4da', '#ffffff'] },
+  { id: 'R',   min: 190, color: '#4dabf7', cap: ['#4dabf7', '#ffffff'] },
+  { id: 'SR',  min: 225, color: '#9775fa', cap: ['#9775fa', '#ffffff'] },
+  { id: 'SSR', min: 260, color: '#fab005', cap: ['#fcc419', '#fff3bf'] },
+  { id: 'UR',  min: 295, color: '#ff5d73', cap: ['#ff5d73', '#ffd43b'] },
+];
+
+const ENDINGS = {
+  retire:      { scene: 'retire',      icon: '💐', good: true,  title: { ja: '定年退職!', en: 'Retired!' }, sub: { ja: '長い間おつかれさまでした', en: 'Otsukaresama deshita!' } },
+  earlyRetire: { scene: 'beach',       icon: '🏖️', good: true,  title: { ja: '早期退職でセカンドライフ', en: 'Early retirement' }, sub: { ja: '退職金でのんびり暮らす', en: 'Living the good life on severance' } },
+  poached:     { scene: 'rival',       icon: '💼', good: false, title: { ja: '{rival}へ転職', en: 'Poached by {rival}' }, sub: { ja: '送別会は盛り上がった', en: 'Great farewell party, though' } },
+  startup:     { scene: 'rocket',      icon: '🚀', good: true,  title: { ja: '起業してユニコーンに!', en: 'Startup became a unicorn!' }, sub: { ja: '時価総額1000億円', en: 'Valued at ¥100 billion' },
+                 alt: { title: { ja: '起業…12回目のピボット中', en: 'Startup… on pivot #12' }, sub: { ja: '夢は続く', en: 'The dream lives on' } } },
+  lottery:     { scene: 'beach',       icon: '💰', good: true,  title: { ja: '宝くじで南の島へ', en: 'Lottery money → tropical island' }, sub: { ja: '毎日が日曜日', en: 'Every day is Sunday' } },
+  burnout:     { scene: 'countryside', icon: '🌾', good: false, title: { ja: '田舎でスローライフ', en: 'Slow life in the countryside' }, sub: { ja: 'ストレスが限界を突破…', en: 'Stress maxed out…' } },
+  quit:        { scene: 'backpack',    icon: '🎒', good: false, title: { ja: '自分探しの旅へ', en: 'Off to find themself' }, sub: { ja: 'やる気が尽きた…', en: 'Motivation ran out…' } },
+  letgo:       { scene: 'ramen',       icon: '🍜', good: false, title: { ja: 'ラーメン屋を開業', en: 'Opened a ramen shop' }, sub: { ja: '評価がどん底に…', en: 'Rating hit rock bottom…' } },
+  abroad:      { scene: 'abroad',      icon: '🌍', good: true,  title: { ja: '家族と海外移住', en: 'Moved abroad with family' }, sub: { ja: '新天地で再スタート', en: 'A fresh start overseas' } },
+  streamer:    { scene: 'streamer',    icon: '📹', good: true,  title: { ja: '人気配信者に転身', en: 'Became a famous streamer' }, sub: { ja: 'チャンネル登録お願いします', en: 'Like and subscribe!' } },
+  isekai:      { scene: 'isekai',      icon: '🐉', good: true,  title: { ja: '異世界で勇者になった', en: 'Became a hero in another world' }, sub: { ja: 'スキル「Oracle ERP」で魔王を倒す', en: 'Defeated the Demon Lord with Oracle ERP skills' } },
+};
+
+/* fun counters for quiet years */
+const QUIET = [
+  { icon: '📧', ja: 'メール', en: 'emails', min: 3000, max: 9000 },
+  { icon: '☕', ja: 'コーヒー', en: 'coffees', min: 300, max: 900 },
+  { icon: '📊', ja: 'スライド', en: 'slides', min: 200, max: 2500 },
+  { icon: '🍙', ja: 'コンビニ飯', en: 'konbini lunches', min: 120, max: 240 },
+  { icon: '🙇', ja: '「すみません」', en: '"sumimasen"s', min: 600, max: 3000 },
+  { icon: '📞', ja: '会議', en: 'meetings', min: 400, max: 1300 },
+  { icon: '🚃', ja: '満員電車', en: 'packed trains', min: 150, max: 240 },
+  { icon: '🐛', ja: 'バグ修正', en: 'bugs fixed', min: 40, max: 600 },
+];
+
+const UI = {
+  title: { ja: '新卒ガチャ', en: 'Shinsotsu Gacha' },
+  subtitle: { ja: '〜入社から定年まで〜', en: '~ From new grad to retirement ~' },
+  start: { ja: 'スタート', en: 'Start' },
+  ranking: { ja: 'ランキング', en: 'Leaderboard' },
+  how1: { ja: '新卒を引く', en: 'Roll a grad' },
+  how2: { ja: '人生を選ぶ', en: 'Choose' },
+  how3: { ja: '上位を狙う', en: 'Rank up' },
+  yourName: { ja: 'あなたの名前', en: 'Your name' },
+  yourNameSub: { ja: 'ランキングに表示されます', en: 'Shown on the leaderboard' },
+  ok: { ja: 'OK', en: 'OK' },
+  tapHandle: { ja: 'ハンドルをタップ!', en: 'Tap the handle!' },
+  newGrad: { ja: '新卒が入社!', en: 'A new grad joins!' },
+  toWheel: { ja: '配属ガチャへ', en: 'Team roulette' },
+  wheelTitle: { ja: '配属ガチャ', en: 'Team roulette' },
+  spin: { ja: '回す!', en: 'Spin!' },
+  join: { ja: '入社する!', en: 'Start career!' },
+  next: { ja: '次の年へ', en: 'Next year' },
+  cont: { ja: 'つづける', en: 'Continue' },
+  toEnding: { ja: '結末を見る', en: 'See the ending' },
+  quiet: { ja: '平和な一年', en: 'A quiet year' },
+  promoted: { ja: '昇進!', en: 'Promoted!' },
+  success: { ja: '成功!', en: 'Success!' },
+  fail: { ja: '失敗…', en: 'Failed…' },
+  yearRev: { ja: '今年の売上貢献', en: 'Revenue this year' },
+  salary: { ja: '年収', en: 'Salary' },
+  total: { ja: '累計貢献', en: 'Total revenue' },
+  tenure: { ja: '在籍年数', en: 'Years' },
+  revenue: { ja: '売上貢献', en: 'Revenue' },
+  peak: { ja: '最高役職', en: 'Peak title' },
+  happy: { ja: '幸福度', en: 'Happiness' },
+  lifetime: { ja: '生涯年収', en: 'Lifetime pay' },
+  again: { ja: 'もう一回', en: 'Play again' },
+  share: { ja: 'シェア', en: 'Share' },
+  home: { ja: 'タイトル', en: 'Title' },
+  back: { ja: '戻る', en: 'Back' },
+  refresh: { ja: '更新', en: 'Refresh' },
+  career: { ja: '売上貢献の推移', en: 'Revenue by year' },
+  lifeline: { ja: 'キャリアの軌跡', en: 'Career timeline' },
+  noRuns: { ja: 'まだ記録がありません', en: 'No runs yet' },
+  online: { ja: '全員のランキング', en: 'Everyone' },
+  localOnly: { ja: 'この端末の記録のみ', en: 'This device only' },
+  offline: { ja: 'オフライン: 後で自動送信します', en: 'Offline: will upload later' },
+  loading: { ja: '読み込み中…', en: 'Loading…' },
+  bestOnly: { ja: '1人1件', en: 'Best per player' },
+  copied: { ja: 'コピーしました', en: 'Copied!' },
+  sent: { ja: 'ランキングに登録!', en: 'Saved to leaderboard!' },
+  yourRank: { ja: 'あなたの順位', en: 'Your ranks' },
+  mot: { ja: 'やる気', en: 'Motivation' },
+  stress: { ja: 'ストレス', en: 'Stress' },
+  rep: { ja: '評価', en: 'Rating' },
+  tech: { ja: '技術', en: 'Tech' },
+  biz: { ja: '業務知識', en: 'Business' },
+  comm: { ja: 'コミュ力', en: 'Social' },
+  stamina: { ja: '体力', en: 'Stamina' },
+  luck: { ja: '運', en: 'Luck' },
+  lbTenure: { ja: '在籍年数', en: 'Tenure' },
+  lbRevenue: { ja: '売上貢献', en: 'Revenue' },
+  lbPeak: { ja: '最高役職', en: 'Title' },
+  lbHappy: { ja: '幸福度', en: 'Happiness' },
+  inYear: { ja: '年目で到達', en: 'yrs to reach' },
+};
+
+const ICON = { tech: '💻', biz: '📊', comm: '💬', stamina: '💪', luck: '🍀', mot: '🔥', stress: '😰', rep: '⭐', rev: '🏢', sal: '💴', pay: '👛', kids: '👶', married: '💍' };
+const STAT_KEYS = ['tech', 'biz', 'comm', 'stamina', 'luck'];
+
+/* ============================ EVENTS ============================
+   C(icon, ja, en, fx, extra)           plain choice
+   K(icon, ja, en, stat, okFx, ngFx, okText, ngText, extra)  skill check
+   ================================================================ */
+const C = (icon, ja, en, fx = {}, x = {}) => ({ icon, label: { ja, en }, fx, ...x });
+const K = (icon, ja, en, check, okFx, ngFx, okT, ngT, x = {}) =>
+  ({ icon, label: { ja, en }, check, ok: { fx: okFx, text: okT }, ng: { fx: ngFx, text: ngT, end: x.ngEnd }, ...x });
+const t = (ja, en) => ({ ja, en });
+
+const EVENTS = [
+  { id: 'training', scene: 'classroom', fixed: true, title: t('新人研修', 'New-hire training'), choices: [
+    C('📚', '猛勉強', 'Study hard', { tech: 8, biz: 6, stress: 8, rep: 6 }),
+    C('🍻', '同期と飲む', 'Bond with peers', { comm: 8, mot: 10, stress: -5, rep: 2 }),
+    C('😴', '居眠り', 'Doze off', { stamina: 6, rep: -4, mot: 6 }),
+  ] },
+  { id: 'excel', scene: 'office', maxLv: 2, title: t('移行データ10万行', '100,000 rows to migrate'), choices: [
+    K('🤖', 'マクロで自動化', 'Automate it', 'tech', { rep: 10, tech: 4, rev: 200 }, { rep: -6, stress: 10 }, null, t('マクロが暴走…', 'Macro went rogue…')),
+    C('✍️', '手作業でやる', 'Do it by hand', { stress: 14, rep: 6, biz: 3 }, { tag: 'night' }),
+    C('🙋', '先輩に聞く', 'Ask a senior', { comm: 4, rep: 3, mot: 2 }),
+  ] },
+  { id: 'uat', scene: 'night', maxLv: 4, title: t('UAT前夜にバグ発覚', 'Bugs found the night before UAT'), choices: [
+    C('🌙', '徹夜で直す', 'All-nighter', { stress: 18, rep: 10, rev: 300, tech: 3 }, { tag: 'night' }),
+    K('📢', '上に報告', 'Escalate', 'comm', { rep: 6, stress: -3 }, { rep: -8, mot: -5 }),
+    C('🏠', '帰って寝る', 'Go home', { stress: -10, rep: -8, mot: 5 }),
+  ] },
+  { id: 'cutover', scene: 'night', maxLv: 4, minT: 1, title: t('本番移行の週末', 'Cutover weekend'), choices: [
+    C('🙋', '参戦する', 'Count me in', { stress: 15, rep: 12, rev: 400 }, { tag: 'night' }),
+    C('🎢', '予定がある', 'Got plans', { mot: 12, rep: -8, stress: -8 }),
+  ] },
+  { id: 'angry', scene: 'meeting', deco: 'anger', title: t('{client}が激怒', '{client} is furious'), choices: [
+    K('🙇', '全力で謝罪', 'Deep bow', 'comm', { rep: 8, rev: 200 }, { rep: -6, mot: -6 }, t('許してもらえた', 'Forgiven!'), t('火に油…', 'Made it worse…')),
+    K('📊', 'データで説明', 'Explain with data', 'biz', { rep: 12, rev: 300 }, { rep: -10, stress: 10 }, t('納得してもらえた', 'They get it now'), t('論破失敗', 'Argument lost')),
+    C('🫣', '隠れる', 'Hide', { rep: -12, stress: -5 }),
+  ] },
+  { id: 'cert', scene: 'classroom', cool: 5, title: t('Oracle認定資格の試験', 'Oracle certification exam'), choices: [
+    K('📖', '受験する', 'Take the exam', 'tech', { tech: 8, rep: 8, sal: 20 }, { mot: -8, stress: 5 }, t('合格!', 'Passed!'), t('不合格…', 'Failed…')),
+    C('⏭️', '今年はパス', 'Skip this year', { mot: 3 }),
+  ] },
+  { id: 'nomikai', scene: 'izakaya', title: t('{boss}から飲みの誘い', '{boss} invites you for drinks'), choices: [
+    C('🍺', '行く', 'Go', { comm: 5, rep: 6, stamina: -4, stress: -4 }),
+    C('🙅', '丁重に断る', 'Politely decline', { mot: 5, rep: -3 }),
+    K('🎤', 'カラオケまで', 'Karaoke too!', 'luck', { rep: 12, mot: 10 }, { rep: -5, stress: 5 }, t('十八番が炸裂!', 'Nailed the song!'), t('音痴がバレた', 'Off-key…')),
+  ] },
+  { id: 'headhunt', scene: 'phone', minT: 2, cool: 3, weight: S => S.mot < 35 ? 3 : S.mot < 50 ? 1.4 : .7, title: t('ヘッドハンターから電話', 'A headhunter calls'), choices: [
+    C('💼', '{rival}へ転職', 'Join {rival}', {}, { end: 'poached' }),
+    K('💰', '昇給交渉に使う', 'Use it to negotiate', 'comm', { sal: 60, mot: 8 }, { rep: -12, mot: -5 }, t('昇給ゲット!', 'Got a raise!'), t('上司が不機嫌に…', 'Boss is not amused…')),
+    C('📵', '断る', 'Decline', { rep: 2, mot: 2 }),
+  ] },
+  { id: 'quarterly', scene: 'server', deco: 'alert', minT: 1, title: t('四半期アップデートで障害', 'Quarterly update broke prod'), choices: [
+    K('🔧', '即修正', 'Hotfix now', 'tech', { rep: 12, rev: 300 }, { rep: -8, stress: 12 }),
+    C('📨', 'SRを起票', 'File a support SR', { stress: 6, rep: 2 }, { text: t('回答待ち…', 'Still waiting for support…') }),
+    K('🙃', '「仕様です」', '"It\'s a feature"', 'luck', { rep: 3, mot: 6 }, { rep: -10 }, t('通った…!', 'They bought it!'), t('通らなかった', "They didn't buy it")),
+  ] },
+  { id: 'overseas', scene: 'airport', minT: 2, cool: 6, title: t('海外案件のオファー', 'Overseas project offer'), choices: [
+    K('✈️', '行く', 'Go', 'comm', { rev: 800, rep: 10, comm: 6, mot: 8, stress: 8 }, { stress: 18, mot: -6 }, t('現地で大活躍!', 'Crushed it abroad!'), t('カルチャーショック…', 'Culture shock…')),
+    C('🗾', '日本に残る', 'Stay in Japan', { mot: 2 }),
+  ] },
+  { id: 'rfp', scene: 'meeting', minLv: 2, title: t('大型案件のコンペ', 'Big RFP pitch'), choices: [
+    C('💸', '安値で勝負', 'Lowball it', { rev: 600, rep: 3, stress: 8 }),
+    K('💎', '価値で勝負', 'Sell the value', 'biz', { rev: 2000, rep: 14 }, { rep: -8, mot: -6 }, t('受注!', 'Won the deal!'), t('失注…', 'Lost the deal…')),
+    K('👔', '役員を連れていく', 'Bring an executive', 'comm', { rev: 1500, rep: 8 }, { rep: -6 }, t('受注!', 'Won the deal!'), t('役員が寝てた', 'The exec fell asleep')),
+  ] },
+  { id: 'junior', scene: 'office', minLv: 2, title: t('後輩がやらかした', 'Your junior messed up'), choices: [
+    C('🛡️', 'かばう', 'Cover for them', { stress: 10, rep: 3, mot: 5 }),
+    C('🧑‍🏫', '一緒に直す', 'Fix it together', { comm: 4, rep: 6, stress: 6 }),
+    C('📝', '始末書を書かせる', 'Make them write a report', { rep: 2, mot: -4 }),
+  ] },
+  { id: 'bonenkai', scene: 'stage', cool: 3, title: t('忘年会の出し物', 'Year-end party performance'), choices: [
+    K('💃', '全力ダンス', 'All-out dance', 'luck', { rep: 12, mot: 12 }, { mot: -8, rep: -4 }, t('社内でバズった!', 'Went viral internally!'), t('完全に滑った', 'Total silence…')),
+    K('🎤', '司会をやる', 'Be the MC', 'comm', { rep: 8, comm: 4 }, { rep: -4 }),
+    C('🫥', '気配を消す', 'Become invisible', { stress: -3 }),
+  ] },
+  { id: 'genai', scene: 'office', once: true, minT: 1, title: t('生成AIツールが導入された', 'Gen-AI tools have arrived'), choices: [
+    C('🤖', '使い倒す', 'Master it', { tech: 8, rev: 300, mot: 4 }),
+    C('👀', '様子見', 'Wait and see', { mot: 2, rep: -3 }),
+    K('📜', '利用規程を作る', 'Write the usage policy', 'biz', { rep: 8 }, { rep: -5, stress: 6 }),
+  ] },
+  { id: 'propose', scene: 'wedding', minAge: 25, maxAge: 45, cool: 3, weight: 1.3, cond: S => !S.married, title: t('大切な人がいる', 'Someone special'), choices: [
+    K('💍', 'プロポーズ', 'Propose', ['comm', 'luck'], { mot: 20, stress: -10, married: 1 }, { mot: -15 }, t('結婚!', 'Married!'), t('フラれた…', 'Rejected…')),
+    C('⏳', 'まだ早い', 'Not yet', {}),
+  ] },
+  { id: 'baby', scene: 'home', maxAge: 48, cool: 2, weight: 1.2, cond: S => S.married && S.kids < 3, title: t('家族が増えた!', 'A new family member!'), choices: [
+    C('🍼', '育休を取る', 'Take parental leave', { mot: 18, stress: -15, rev: -500, rep: 2, kids: 1 }),
+    C('💼', '働き続ける', 'Keep working', { rev: 200, mot: -4, stress: 8, kids: 1 }),
+  ] },
+  { id: 'checkup', scene: 'clinic', minAge: 30, cool: 4, title: t('健康診断の結果…', 'Health checkup results…'), choices: [
+    C('🥗', '食事を改善', 'Eat healthier', { stamina: 8, mot: -3 }),
+    C('🏃', 'ジムに通う', 'Hit the gym', { stamina: 12, stress: -5 }),
+    C('🍜', 'ラーメンは正義', 'Ramen is life', { mot: 8, stamina: -8 }),
+  ] },
+  { id: 'lottery', scene: 'city', deco: 'money', minT: 1, cool: 3, weight: .8, title: t('年末ジャンボ宝くじ', 'Year-end lottery'), choices: [
+    { icon: '🎟️', label: t('買う', 'Buy a ticket'), mystery: true,
+      run: S => rnd() < 0.03 + S.luck / 1500 ? { success: true, next: 'lottowin' } : { success: false, fx: { mot: -2 }, text: t('ハズレ', 'No luck') } },
+    C('🙅', '買わない', 'Skip', {}),
+  ] },
+  { id: 'lottowin', scene: 'city', deco: 'money', chainOnly: true, title: t('7億円当選!!', 'You won ¥700 million!!'), choices: [
+    C('🏝️', '会社を辞める', 'Quit the company', {}, { end: 'lottery' }),
+    C('💼', '働き続ける', 'Keep working', { mot: 40, stress: -30 }, { text: t('働く億万長者', 'The working millionaire') }),
+  ] },
+  { id: 'startup', scene: 'cafe', minAge: 26, maxAge: 50, minT: 3, cool: 6, title: t('友人から起業の誘い', "A friend's startup offer"), choices: [
+    C('🚀', '参加する', 'Join them', {}, { end: 'startup' }),
+    K('💡', '社内新規事業にする', 'Pitch it internally', 'biz', { rev: 1000, rep: 10 }, { rep: -5 }),
+    C('🙅', '断る', 'Decline', { mot: -2 }),
+  ] },
+  { id: 'golf', scene: 'golf', minLv: 3, title: t('接待ゴルフ', 'Client golf outing'), choices: [
+    K('🏆', '本気で勝つ', 'Play to win', 'stamina', { rep: 4, mot: 10 }, { rep: -4, stress: 4 }, t('ベストスコア!', 'Best score ever!'), t('池ポチャ連発', 'Every ball in the pond')),
+    C('😅', '接待に徹する', 'Let them win', { rev: 1500, mot: -4, stress: 4 }),
+  ] },
+  { id: 'golive', scene: 'server', minT: 3, cool: 3, title: t('大型案件の本番稼働日', 'Big go-live day'), choices: [
+    K('🚀', '稼働!', 'Go live!', ['tech', 'biz', 'comm'], { rev: 2500, rep: 15, mot: 12 }, { rep: -12, stress: 20 }, t('無事故で稼働!', 'Flawless go-live!'), t('大炎上…', 'Up in flames…')),
+    K('⏸️', '延期を提案', 'Propose a delay', 'comm', { rep: 2, stress: -5 }, { rep: -10, rev: -500 }),
+  ] },
+  { id: 'rescue', scene: 'fire', minLv: 3, cool: 4, title: t('炎上案件の火消し', 'Rescue a burning project'), choices: [
+    K('🧯', '引き受ける', 'Take it on', 'biz', { rep: 20, rev: 2000, stress: 15 }, { rep: -10, stress: 25 }, t('鎮火成功!', 'Fire put out!'), t('延焼…', 'It spread…')),
+    C('✋', '断る', 'Decline', { rep: -5, mot: 2 }),
+  ] },
+  { id: 'mentor', scene: 'classroom', minLv: 2, cool: 4, title: t('新卒のメンターに任命', 'You get a new-grad mentee'), choices: [
+    C('🔥', '熱血指導', 'Coach hard', { comm: 5, rep: 6, stress: 6 }),
+    C('🌱', '見守る', 'Let them grow', { mot: 5, rep: 2 }),
+    K('🎰', '新卒ガチャを回す', 'Spin the grad gacha', 'luck', { rep: 10, rev: 500 }, { stress: 8 }, t('SSR新卒!', 'SSR new grad!'), t('N新卒…', 'Common new grad…')),
+  ] },
+  { id: 'transfer', scene: 'train', minT: 3, cool: 8, cond: () => (CONFIG.offices || []).length > 1, title: t('{office}へ転勤の打診', 'Transfer offer: {office}'), choices: [
+    C('🧳', '行く', 'Go', { rep: 8, stress: 5, comm: 4, mot: 3 }),
+    C('❌', '断る', 'Refuse', { rep: -8, mot: 4 }),
+  ] },
+  { id: 'stream', scene: 'home', maxAge: 50, minT: 1, once: true, title: t('副業で動画配信?', 'Start a video channel?'), choices: [
+    { icon: '📹', label: t('始める', 'Start'), mystery: true,
+      run: S => rnd() < 0.04 + S.luck / 1200 ? { success: true, next: 'streamhit' } : { success: false, fx: { mot: 6, stress: 3 }, text: t('登録者12人', '12 subscribers') } },
+    C('🙅', 'やめとく', 'Nah', {}),
+  ] },
+  { id: 'streamhit', scene: 'streamer', chainOnly: true, title: t('登録者100万人突破!', '1 million subscribers!'), choices: [
+    C('📹', '配信者になる', 'Go full-time', {}, { end: 'streamer' }),
+    C('💼', '会社員を続ける', 'Keep the day job', { mot: 20, rep: -4 }),
+  ] },
+  { id: 'magic', scene: 'magic', special: true, title: t('足元に魔法陣が…!?', 'A magic circle under your feet!?'), choices: [
+    C('✨', '飛び込む', 'Jump in', {}, { end: 'isekai' }),
+    K('🏃', '全力で逃げる', 'Run for it', 'stamina', { mot: 5 }, {}, t('逃げ切った!', 'Escaped!'), t('召喚された…', 'Summoned anyway…'), { ngEnd: 'isekai' }),
+  ] },
+  { id: 'cat', scene: 'home', cool: 6, title: t('Web会議に猫が乱入', 'Cat crashes the video call'), choices: [
+    C('😹', '紹介する', 'Introduce the cat', { mot: 8, rep: 3 }),
+    C('📷', 'カメラオフ', 'Camera off', { stress: -2 }),
+  ] },
+  { id: 'expense', scene: 'office', cool: 4, title: t('経費精算が差し戻し', 'Expense report rejected'), choices: [
+    K('😤', '抗議する', 'Protest', 'comm', { mot: 4 }, { rep: -4, stress: 5 }),
+    C('🔁', '直して再提出', 'Fix and resubmit', { stress: 4 }),
+    C('🗑️', '諦める', 'Give up', { mot: -4, stress: -2, pay: -3 }),
+  ] },
+  { id: 'vegas', scene: 'vegas', minT: 2, cool: 4, title: t('ラスベガスのカンファレンス', 'Conference in Las Vegas'), choices: [
+    C('🧠', '全セッション参加', 'Attend every session', { tech: 6, biz: 4, rep: 4 }),
+    K('🎰', 'カジノへ', 'Hit the casino', 'luck', { mot: 15 }, { mot: -8, rep: -4 }, t('大勝ち!', 'Jackpot!'), t('全部スった', 'Lost it all')),
+    C('🤝', '人脈づくり', 'Network', { comm: 6, rev: 500 }),
+  ] },
+  { id: 'reorg', scene: 'office', minT: 3, cool: 5, title: t('組織再編', 'Reorganization'), choices: [
+    K('🌊', '流れに乗る', 'Go with the flow', 'luck', { rep: 6, mot: 4 }, { mot: -8 }, t('いい上司に当たった', 'Got a great new boss'), t('上司ガチャ失敗', 'Lost the boss lottery')),
+    K('🙋', '新組織に立候補', 'Volunteer for the new unit', 'comm', { rep: 12, stress: 8 }, { stress: 8, rep: -4 }),
+  ] },
+  { id: 'resign', scene: 'office', minLv: 3, cool: 4, title: t('部下が退職届を出した', 'Team member hands in notice'), choices: [
+    K('☕', '1on1で引き止め', '1-on-1 to keep them', 'comm', { rep: 6, mot: 4 }, { mot: -6, stress: 8 }, t('残ってくれた!', 'They stayed!'), t('決意は固かった', 'Their mind was made up')),
+    C('🎉', '笑顔で送り出す', 'Send them off warmly', { mot: 3, rev: -500 }),
+  ] },
+  { id: 'budget', scene: 'meeting', minLv: 4, cool: 3, title: t('来期の予算策定', "Next year's budget"), choices: [
+    K('🎯', '強気の目標', 'Aggressive target', 'biz', { rev: 3000, rep: 12 }, { rep: -12, stress: 12 }, t('目標達成!', 'Target smashed!'), t('未達…', 'Missed it…')),
+    C('🛡️', '堅実な目標', 'Safe target', { rev: 800, rep: 2 }),
+  ] },
+  { id: 'board', scene: 'boardroom', minLv: 5, cool: 3, title: t('取締役会でプレゼン', 'Present to the board'), choices: [
+    K('📈', '攻めの戦略', 'Bold strategy', 'biz', { rev: 5000, rep: 15 }, { rep: -15 }),
+    K('🤝', '根回しで合意形成', 'Pre-wire a consensus', 'comm', { rep: 8, rev: 1000 }, { mot: -5 }),
+    C('📋', '前年踏襲', 'Same as last year', { rep: -4, stress: -4 }),
+  ] },
+  { id: 'midlife', scene: 'city', minAge: 40, maxAge: 55, once: true, title: t('ミッドライフクライシス', 'Midlife crisis'), choices: [
+    C('🏍️', 'バイクを買う', 'Buy a motorbike', { mot: 12, pay: -150 }),
+    K('🎸', 'バンド結成', 'Start a band', 'luck', { mot: 15, comm: 4 }, { mot: 4 }, t('社内フェスで優勝!', 'Won the office music fest!'), t('練習初日で解散', 'Broke up at the first rehearsal')),
+    C('🧘', '瞑想する', 'Meditate', { stress: -15 }),
+  ] },
+  { id: 'empty', scene: 'home', deco: 'sweat', cool: 3, weight: 4, cond: S => S.stress >= 70, title: t('もう限界かも…', 'Running on empty…'), choices: [
+    C('🏝️', '有給で旅行', 'Take a vacation', { stress: -30, mot: 10, rev: -300 }),
+    C('🧑‍⚕️', '産業医に相談', 'See the company doctor', { stress: -20, mot: 3 }),
+    C('💪', '根性で乗り切る', 'Power through', { rev: 500, stress: 10, rep: 4 }),
+  ] },
+  { id: 'trip', scene: 'bus', cool: 4, title: t('社員旅行!', 'Company trip!'), choices: [
+    C('🎉', '全力で楽しむ', 'Enjoy to the max', { mot: 12, comm: 4, stress: -8 }),
+    C('📱', 'バスでゲーム', 'Play a game on the bus', { mot: 8, luck: 3 }, { text: t('新卒ガチャにハマった', 'Hooked on Shinsotsu Gacha') }),
+    C('💻', 'PCで仕事', 'Work on the laptop', { rev: 200, mot: -8, rep: 2 }),
+  ] },
+  { id: 'early', scene: 'office', minAge: 50, once: true, weight: 1.5, title: t('早期退職の募集', 'Early retirement program'), choices: [
+    C('💰', '応募する', 'Apply', {}, { end: 'earlyRetire' }),
+    C('🪑', '残る', 'Stay', { mot: -2 }),
+  ] },
+  { id: 'abroad', scene: 'airport', once: true, maxAge: 55, weight: .8, cond: S => S.married, title: t('パートナーが海外赴任に', 'Your partner is moving abroad'), choices: [
+    C('✈️', '一緒に行く', 'Go with them', {}, { end: 'abroad' }),
+    K('🌐', '海外拠点への異動を探す', 'Find an overseas transfer', 'comm', { mot: 10, rev: 500, comm: 5 }, { mot: -12, stress: 8 }, t('海外拠点へ異動!', 'Transferred overseas!'), t('空きポストなし…', 'No openings…')),
+    C('💻', '遠距離で頑張る', 'Try long-distance', { mot: -10, stress: 8 }),
+  ] },
+  { id: 'phrase', scene: 'meeting', cool: 5, title: t('{boss}の口癖「{phrase}」', '{boss}: "{phrase}"'), choices: [
+    C('🙆', '実践する', 'Live by it', { mot: 5, rep: 5 }),
+    C('🙄', '聞き流す', 'Tune it out', { stress: -3, rep: -2 }),
+  ] },
+  { id: 'kaizen', scene: 'office', cool: 4, title: t('業務改善のアイデア', 'Process improvement idea'), choices: [
+    K('💡', '提案する', 'Propose it', 'biz', { rep: 8, rev: 500 }, { rep: -3, mot: -3 }),
+    C('🤐', '黙っておく', 'Keep quiet', {}),
+  ] },
+  { id: 'rto', scene: 'home', once: true, minT: 1, title: t('出社 or リモート?', 'Office or remote?'), choices: [
+    C('🏢', '毎日出社', 'Office every day', { rep: 5, stress: 6, comm: 3 }),
+    C('🏠', 'フルリモート', 'Fully remote', { mot: 8, stress: -6, rep: -3 }),
+    K('☕', 'カフェで仕事', 'Work from a café', 'luck', { mot: 6 }, { rep: -10, stress: 10 }, t('はかどる!', 'So productive!'), t('PCを置き忘れた!', 'Left the laptop behind!')),
+  ] },
+  { id: 'cloud', scene: 'server', minT: 4, cool: 6, title: t('オンプレからクラウドへ', 'Move on-prem to the cloud'), choices: [
+    K('☁️', 'OCIへ移行', 'Migrate to OCI', 'tech', { rev: 2000, rep: 10 }, { stress: 15, rep: -6 }),
+    C('🏚️', '現行維持', 'Keep it on-prem', { rev: 300, mot: -3 }),
+  ] },
+  { id: 'award', scene: 'stage', deco: 'sparkle', cool: 5, cond: S => S.rep >= 68, title: t('社長賞にノミネート!', "Nominated for the President's Award!"), choices: [
+    K('🎤', '受賞スピーチ', 'Give a speech', 'comm', { rep: 10, mot: 15, sal: 50 }, { rep: 3, mot: 5 }, t('会場が沸いた!', 'Standing ovation!'), t('噛みまくった', 'Tongue-tied…')),
+    C('🙏', 'チームのおかげ', 'Thank the team', { mot: 10, rep: 6 }),
+  ] },
+  { id: 'ceo', scene: 'boardroom', deco: 'sparkle', once: true, weight: 6, cond: S => S.lv === 6 && S.rep >= 80 && S.yrsLv >= 3, title: t('次期社長に指名!?', 'Nominated as the next CEO!?'), choices: [
+    C('👑', '引き受ける', 'Accept', { mot: 15, stress: 15 }, { promote: 7 }),
+    C('🛠️', '現場が好き', 'I love the field', { mot: 10, stress: -10 }),
+  ] },
+  { id: 'typo', scene: 'office', cool: 5, title: t('提案書で顧客名を誤字', "Typo in the client's name"), choices: [
+    C('🙇', '即謝罪', 'Apologize now', { rep: -3, stress: 3 }),
+    K('🤞', '気づかれないよう祈る', 'Pray nobody notices', 'luck', { mot: 3 }, { rep: -10 }, t('セーフ!', 'Nobody noticed!'), t('社長が気づいた', 'Their CEO noticed')),
+  ] },
+  { id: 'party', scene: 'izakaya', minLv: 3, cool: 4, title: t('チームの打ち上げ', 'Team celebration'), choices: [
+    C('💳', '全部おごる', 'Treat everyone', { mot: 6, rep: 6, stress: -4, pay: -15 }),
+    C('🧾', '割り勘', 'Split the bill', { mot: 3 }),
+  ] },
+];
+/* ============================ ENGINE ============================ */
+let rnd = () => Math.random();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ri = (a, b) => a + Math.floor(rnd() * (b - a + 1));
+const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
+function wpick(items, wf) {
+  const ws = items.map(wf); const tot = ws.reduce((a, b) => a + b, 0);
+  let r = rnd() * tot;
+  for (let i = 0; i < items.length; i++) { r -= ws[i]; if (r <= 0) return items[i]; }
+  return items[items.length - 1];
+}
+const ALL_EVENTS = () => EVENTS.concat((CONFIG.customEvents || []).map((e, i) => ({ id: 'custom' + i, ...e })));
+let EVMAP = {};
+function buildEventMap() { EVMAP = {}; ALL_EVENTS().forEach(e => { EVMAP[e.id] = e; }); }
+
+/* ---------- roll a new grad ---------- */
+function rollGrad() {
+  const nat = wpick(NATIONS, n => n.w);
+  const g = rnd() < 0.58 ? 'm' : 'f';
+  const deg = wpick(DEGREES, d => d.w);
+  let age = pick(deg.ages);
+  const major = pick(MAJORS);
+  const pers = pick(PERSONALITIES);
+  const st = { tech: ri(20, 60), biz: ri(20, 60), comm: ri(20, 60), stamina: ri(25, 65), luck: ri(5, 95) };
+  for (const [k, v] of Object.entries(major.mod)) st[k] += v;
+  for (const [k, v] of Object.entries(pers.mod || {})) st[k] += v;
+  if (deg.bonus) { st.tech += Math.round(deg.bonus * .6); st.biz += Math.round(deg.bonus * .6); }
+  for (const k of STAT_KEYS) st[k] = clamp(st[k], 5, 95);
+  const total = STAT_KEYS.reduce((a, k) => a + st[k], 0);
+  let rarity = RARITIES[0];
+  for (const r of RARITIES) if (total >= r.min) rarity = r;
+
+  // name
+  let fam = pick(nat.fam), giv = pick(g === 'm' ? nat.m : nat.f);
+  let famJa = fam[1];
+  if (nat.nikkei && rnd() < nat.nikkei) { const jf = pick(NATION.JP.fam); fam = [jf[0], jf[0]]; famJa = katakanaOf(jf[0]); }
+  let name;
+  if (nat.style === 'jp') name = { ja: `${fam[1]} ${giv[1]}`, en: `${giv[0]} ${fam[0]}` };
+  else if (nat.style === 'cn') name = { ja: `${fam[1]} ${giv[1]}`, en: `${fam[0]} ${giv[0]}` };
+  else if (nat.style === 'ff') name = { ja: `${fam[1]}・${giv[1]}`, en: `${fam[0]} ${giv[0]}` };
+  else name = { ja: `${giv[1]}・${famJa}`, en: `${giv[0]} ${fam[0]}` };
+
+  const look = {
+    g, skin: pick(SKINS[nat.skin]), hair: pick(HAIRS[nat.hair]), hs: ri(0, 3),
+    gl: rnd() < (pers.glasses || .22) ? 1 : 0, glAge: ri(42, 58),
+    bald: g === 'm' && rnd() < .35 ? 1 : 0, baldAge: ri(44, 56), grey: +(0.6 + rnd() * .6).toFixed(2),
+    suit: pick(SUITS), tie: pick(TIES),
+  };
+  return { nat: nat.code, g, age, deg: deg.id, major: major.id, pers: pers.id, stats: st, total, rarity: rarity.id, name, look };
+}
+const KATA = { Sato: 'サトウ', Suzuki: 'スズキ', Takahashi: 'タカハシ', Tanaka: 'タナカ', Ito: 'イトウ', Watanabe: 'ワタナベ', Yamamoto: 'ヤマモト', Nakamura: 'ナカムラ', Kobayashi: 'コバヤシ', Kato: 'カトウ', Yoshida: 'ヨシダ', Yamada: 'ヤマダ', Sasaki: 'ササキ', Matsumoto: 'マツモト', Inoue: 'イノウエ', Kimura: 'キムラ', Hayashi: 'ハヤシ', Shimizu: 'シミズ', Mori: 'モリ', Ikeda: 'イケダ' };
+const katakanaOf = (s) => KATA[s] || s;
+
+/* ---------- new career state ---------- */
+function newState(grad, module) {
+  const pers = PERSONALITIES.find(p => p.id === grad.pers);
+  const S = {
+    grad, name: grad.name, nat: grad.nat, g: grad.g, look: grad.look, major: grad.major, pers: grad.pers, module,
+    age0: grad.age, age: grad.age, yearIdx: 0, done: 0,
+    ...grad.stats,
+    mot: 60 + (pers.mot || 0), stress: 10, rep: 40,
+    stressMul: pers.stressMul || 1, repMul: pers.repMul || 1, night: pers.night || 1,
+    lv: 0, yrsLv: 0, peak: 0, peakYear: 0,
+    sal: LEVELS[0].sal + ri(-10, 20), revenue: 0, yearRev: 0, lifetime: 0, happySum: 0,
+    married: false, kids: 0, used: {}, hist: [], tok: {},
+  };
+  return S;
+}
+
+/* ---------- event selection ---------- */
+function eventOk(S, e) {
+  if (e.fixed || e.chainOnly || e.special) return false;
+  if (e.minAge && S.age < e.minAge) return false;
+  if (e.maxAge && S.age > e.maxAge) return false;
+  if (e.minT && S.yearIdx < e.minT) return false;
+  if (e.minLv != null && S.lv < e.minLv) return false;
+  if (e.maxLv != null && S.lv > e.maxLv) return false;
+  const last = S.used[e.id];
+  if (last != null) {
+    if (e.once) return false;
+    if (S.yearIdx - last < (e.cool || 4)) return false;
+  }
+  if (e.cond) { try { if (!e.cond(S)) return false; } catch (_) { return false; } }
+  return true;
+}
+function pickEvent(S) {
+  if (S.yearIdx === 0) return EVMAP.training;
+  if (S.yearIdx >= 2 && !S.used.magic && rnd() < 0.0015) return EVMAP.magic;
+  if (S.yearIdx >= 2 && S.stress < 70 && rnd() < 0.22) return 'quiet';
+  const pool = Object.values(EVMAP).filter(e => eventOk(S, e));
+  if (!pool.length) return 'quiet';
+  return wpick(pool, e => typeof e.weight === 'function' ? e.weight(S) : (e.weight ?? 1));
+}
+function markUsed(S, e) { S.used[e.id] = S.yearIdx; }
+
+/* tokens like {client} are chosen once per event */
+function rollTokens(S) {
+  const offs = CONFIG.offices || [];
+  S.tok = {
+    company: CONFIG.company, boss: CONFIG.boss,
+    client: pick(CONFIG.clients && CONFIG.clients.length ? CONFIG.clients : [{ ja: '顧客', en: 'the client' }]),
+    rival: pick(CONFIG.rivals && CONFIG.rivals.length ? CONFIG.rivals : [{ ja: 'ライバル企業', en: 'a rival firm' }]),
+    office: offs.length > 1 ? pick(offs.slice(1)) : (offs[0] || { ja: '地方拠点', en: 'a regional office' }),
+    phrase: pick(CONFIG.catchphrases && CONFIG.catchphrases.length ? CONFIG.catchphrases : [{ ja: '頑張ろう', en: "Let's do our best" }]),
+  };
+}
+
+/* ---------- checks ---------- */
+function statVal(S, stat) {
+  const ks = Array.isArray(stat) ? stat : [stat];
+  return ks.reduce((a, k) => a + (S[k] ?? 50), 0) / ks.length;
+}
+function checkP(S, stat) {
+  const v = statVal(S, stat);
+  const usesLuck = Array.isArray(stat) ? stat.includes('luck') : stat === 'luck';
+  let p = 0.12 + v / 100 * 0.78 + (usesLuck ? 0 : (S.luck - 50) / 400) - Math.max(0, S.stress - 70) / 200;
+  return clamp(p, 0.05, 0.95);
+}
+function choiceChance(S, ch) {
+  if (ch.mystery) return -1;
+  if (!ch.check) return null;
+  return checkP(S, ch.check);
+}
+
+/* returns {success, fx, text, end, next, promote, roll, p} */
+function resolveChoice(S, ev, ch) {
+  markUsed(S, ev);
+  if (ch.run) { const r = ch.run(S) || {}; return { success: r.success ?? null, fx: r.fx || {}, text: r.text, end: r.end, next: r.next }; }
+  if (ch.check) {
+    const p = checkP(S, ch.check), roll = rnd();
+    const ok = roll < p; const b = ok ? (ch.ok || {}) : (ch.ng || {});
+    return { success: ok, fx: b.fx || {}, text: b.text, end: b.end || null, next: b.next, p, roll, tag: ch.tag };
+  }
+  return { success: null, fx: ch.fx || {}, text: ch.text, end: ch.end || null, next: ch.next, promote: ch.promote, tag: ch.tag };
+}
+
+/* apply effects, return actual deltas */
+const METERS = ['mot', 'stress', 'rep'];
+function applyFx(S, fx, tag) {
+  const out = [];
+  for (let [k, v] of Object.entries(fx || {})) {
+    if (!v) continue;
+    if (k === 'stress' && v > 0) v = Math.round(v * S.stressMul * (tag === 'night' ? S.night : 1));
+    if (k === 'rep' && v > 0) v = Math.round(v * S.repMul);
+    if (METERS.includes(k) || STAT_KEYS.includes(k)) {
+      const before = S[k];
+      S[k] = clamp(S[k] + v, 0, k === 'stress' || METERS.includes(k) ? 100 : 99);
+      const d = S[k] - before; if (d) out.push({ k, v: d });
+    } else if (k === 'rev') { S.yearRev += v; out.push({ k, v }); }
+    else if (k === 'sal') { S.sal = Math.max(200, S.sal + v); out.push({ k, v }); }
+    else if (k === 'pay') { S.lifetime += v; out.push({ k, v }); }
+    else if (k === 'kids') { S.kids += v; out.push({ k, v }); }
+    else if (k === 'married') { S.married = true; out.push({ k, v: 1 }); }
+    else { S[k] = (S[k] || 0) + v; }
+  }
+  return out;
+}
+
+function promote(S, to) {
+  const from = S.lv, oldSal = S.sal;
+  S.lv = to; S.yrsLv = 0;
+  S.sal = Math.round(LEVELS[to].sal + Math.max(0, oldSal - LEVELS[from].sal) * 0.5);
+  S.rep = clamp(S.rep - 20, 35, 100);
+  S.mot = clamp(S.mot + 10, 0, 100);
+  if (to > S.peak) { S.peak = to; S.peakYear = S.done; }
+  return { from, to, oldSal, newSal: S.sal };
+}
+
+/* ---------- year end ---------- */
+function endYear(S, icon) {
+  const m = MODULES[S.module];
+  const skill = S.tech * m.w.tech + S.biz * m.w.biz + S.comm * m.w.comm;
+  const aff = m.majors.includes(S.major) ? 6 : 0;
+  let perf = (skill + aff - 50) / 100 + (S.mot - 50) / 220 - Math.max(0, S.stress - 75) / 90 + (rnd() - .5) * .15;
+  perf = clamp(perf, -0.5, 0.7);
+  const base = Math.round(LEVELS[S.lv].rev * (1 + perf));
+  S.yearRev = Math.max(0, S.yearRev + base);
+  S.revenue += S.yearRev;
+
+  const before = { mot: S.mot, stress: S.stress, rep: S.rep };
+  let dRep = perf * 12 + (rnd() * 6 - 3) + (50 - S.rep) * 0.08;
+  if (dRep > 0) dRep *= S.repMul;
+  S.rep = clamp(S.rep + dRep, 0, 100);
+  for (const k of ['tech', 'biz', 'comm']) S[k] = clamp(S[k] + Math.round(m.w[k] * 4 + rnd() * 1.2), 0, 99);
+  S.stress = clamp(S.stress - S.stress * 0.06 + (2 + S.lv * 1.1 - S.stamina / 35 + Math.max(0, S.age - 45) * 0.15) * S.stressMul, 0, 100);
+  S.mot = clamp(S.mot + (55 - S.mot) * 0.12 - (S.pers === 'ambitious' && S.yrsLv >= 5 ? 4 : 0), 0, 100);
+  if (S.age >= 40) S.stamina = clamp(S.stamina - (S.age >= 55 ? 2 : 1), 0, 99);
+  S.sal = Math.round(S.sal + Math.max(0, LEVELS[S.lv].sal * 0.015 + (S.rep - 50) / 6));
+  S.lifetime += S.sal;
+  S.happySum += S.mot;
+  S.done += 1; S.yrsLv += 1;
+  S.hist.push({ age: S.age, lv: S.lv, rev: S.yearRev, sal: S.sal, mot: Math.round(S.mot), icon: icon || '📅' });
+
+  const res = { rev: S.yearRev, sal: S.sal, drift: { mot: S.mot - before.mot, stress: S.stress - before.stress, rep: S.rep - before.rep }, promo: null, end: null };
+  if (S.stress >= 100) res.end = 'burnout';
+  else if (S.mot <= 0) res.end = 'quit';
+  else if (S.rep <= 0) res.end = 'letgo';
+  else {
+    const L = LEVELS[S.lv];
+    if (S.lv < 6 && S.yrsLv >= L.yrs && S.rep >= L.rep) {
+      if (rnd() < (L.slot ?? 1)) res.promo = promote(S, S.lv + 1);
+      else res.noSlot = true; // no open position this year
+    }
+  }
+  S.yearRev = 0;
+  return res;
+}
+
+/* ---------- final record ---------- */
+function happyScore(S) {
+  const n = S.hist.length;
+  const avg = n ? S.happySum / n : S.mot;
+  return Math.round(avg * Math.min(1, S.done / 10));
+}
+function uuid() { return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function makeRun(S, endId, player) {
+  return {
+    id: uuid(), trip: CONFIG.tripId || '', player: (player || '').slice(0, 20),
+    gradJa: S.name.ja, gradEn: S.name.en, nat: S.nat, gender: S.g, startAge: S.age0, endAge: S.age,
+    years: S.done, revenue: Math.round(S.revenue), peak: S.peak, yearsToPeak: S.peakYear,
+    happy: happyScore(S), ending: endId,
+    look: JSON.stringify({ ...S.look, age: S.age, mood: (ENDINGS[endId] || {}).good ? 'happy' : 'neutral' }),
+  };
+}
+if (typeof module !== 'undefined') module.exports = {};
+/* ============================ ART: CORE ============================ */
+const OL = '#2b2d42';
+const so = (w = 2.5) => `stroke="${OL}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
+const Rc = (x, y, w, h, f, o = '') => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}" ${o}/>`;
+const Ci = (cx, cy, r, f, o = '') => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${f}" ${o}/>`;
+const El = (cx, cy, rx, ry, f, o = '') => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${f}" ${o}/>`;
+const Pa = (d, f, o = '') => `<path d="${d}" fill="${f}" ${o}/>`;
+const Pg = (pts, f, o = '') => `<polygon points="${pts}" fill="${f}" ${o}/>`;
+const Ln = (x1, y1, x2, y2, c = OL, w = 2.5, o = '') => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${w}" stroke-linecap="round" ${o}/>`;
+const Tx = (x, y, s, size = 14, f = OL, o = '') => `<text x="${x}" y="${y}" font-size="${size}" fill="${f}" text-anchor="middle" font-weight="900" ${o}>${s}</text>`;
+let _uid = 0; const uid = () => 'g' + (++_uid);
+
+function starPts(cx, cy, r, ir = 0.42, n = 5, rot = -90) {
+  const p = [];
+  for (let i = 0; i < n * 2; i++) {
+    const rr = i % 2 ? r * ir : r, a = (rot + i * 180 / n) * Math.PI / 180;
+    p.push((cx + rr * Math.cos(a)).toFixed(2) + ',' + (cy + rr * Math.sin(a)).toFixed(2));
+  }
+  return p.join(' ');
+}
+const Star = (cx, cy, r, f, o = '', n = 5) => Pg(starPts(cx, cy, r, n === 5 ? .42 : .62, n), f, o);
+function hexMix(a, b, t) {
+  const pa = a.match(/\w\w/g).map(h => parseInt(h, 16)), pb = b.match(/\w\w/g).map(h => parseInt(h, 16));
+  return '#' + pa.map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+const shade = (c, t) => t < 0 ? hexMix(c, '#000000', -t) : hexMix(c, '#ffffff', t);
+function seeded(seed) { let s = seed * 9301 + 49297; return () => ((s = (s * 9301 + 49297) % 233280) / 233280); }
+
+/* ---------------- avatar (bust, 100 x 130) ---------------- */
+function moodOf(S) {
+  if (S.stress >= 75) return 'stressed';
+  if (S.mot >= 70) return 'happy';
+  if (S.mot <= 25) return 'sad';
+  if (S.stress >= 55) return 'tired';
+  return 'neutral';
+}
+function avatar(look, o = {}) {
+  const age = o.age ?? 22, mood = o.mood || 'neutral', acc = o.acc || '';
+  const has = (k) => acc.split(' ').includes(k);
+  const gt = clamp((age - 36) / 26, 0, 1) * (look.grey || 1);
+  const hair = hexMix(look.hair, '#d9d9e0', clamp(gt, 0, .92));
+  const skin = look.skin, sk2 = shade(skin, -.12);
+  const bald = look.bald && age >= look.baldAge;
+  const glasses = look.gl || age >= look.glAge;
+  const f = look.g === 'f';
+  let s = '';
+  if (has('hero')) s += Pa('M20,96 L2,132 L98,132 L80,96 Z', '#c92a2a', so());
+  // back hair
+  if (f && look.hs === 0) s += Pa('M23,46 Q20,94 30,106 L70,106 Q80,94 77,46 Z', hair, so());
+  if (f && look.hs === 1) s += Pa('M23,46 Q21,80 28,84 L72,84 Q79,80 77,46 Z', hair, so());
+  if (f && look.hs === 2) s += Ci(76, 30, 10, hair, so()) + Pa('M80,34 Q92,52 84,70 Q80,56 74,40 Z', hair, so());
+  // body
+  s += Pa('M8,132 Q10,98 34,90 L66,90 Q90,98 92,132 Z', look.suit, so());
+  s += Pg('41,90 50,108 59,90', '#ffffff', so(2));
+  if (!f) s += Pg('48,95 52,95 55,115 50,121 45,115', look.tie, so(1.8)) + Pg('46.5,90 53.5,90 52,96 48,96', look.tie, so(1.8));
+  else s += Pa('M44,91 Q50,100 56,91', 'none', `stroke="${look.tie}" stroke-width="3.5" stroke-linecap="round"`);
+  s += Pa('M41,90 L50,109 L45,132', 'none', so(2)) + Pa('M59,90 L50,109 L55,132', 'none', so(2));
+  s += Pa('M38,92 L60,113', 'none', 'stroke="#ff5d73" stroke-width="2.2"') + Rc(57, 111, 13, 15, '#ffffff', so(1.6) + ' rx="2"') + Rc(59.5, 114, 8, 3, '#ff5d73');
+  // neck, ears, head
+  s += Rc(43, 72, 14, 20, skin, so(2)) + Rc(44.2, 73, 11.6, 6, sk2);
+  s += Ci(26, 51, 5.5, skin, so(2)) + Ci(74, 51, 5.5, skin, so(2));
+  s += El(50, 47, 24, 27, skin, so());
+  s += hairFront(look, hair, bald, f);
+  s += face(mood, age);
+  if (glasses) s += Ci(41, 50, 7.5, 'rgba(255,255,255,.25)', so(2.2)) + Ci(59, 50, 7.5, 'rgba(255,255,255,.25)', so(2.2)) + Ln(48.5, 50, 51.5, 50, OL, 2.2) + Ln(33.5, 49, 27, 47, OL, 2) + Ln(66.5, 49, 73, 47, OL, 2);
+  // accessories
+  if (has('crown')) s += Pg('33,24 37,7 44,17 50,3 56,17 63,7 67,24', '#ffd43b', so(2)) + Ci(50, 14, 2.4, '#ff5d73') + Ci(39, 17, 1.8, '#4dabf7') + Ci(61, 17, 1.8, '#4dabf7');
+  if (has('straw')) s += El(50, 27, 38, 8, '#f2d16b', so()) + Pa('M31,27 Q33,6 50,6 Q67,6 69,27 Z', '#f2d16b', so()) + Rc(31.5, 20, 37, 5, '#e03131');
+  if (has('band')) s += Rc(25, 28, 50, 7, '#ffffff', so(2) + ' rx="2"') + Ci(50, 31.5, 2.6, '#e03131') + Pa('M74,31 L86,26 L84,36 Z', '#ffffff', so(1.8));
+  if (has('party')) s += Pg('38,24 50,-6 62,24', '#ff5d73', so(2)) + Ci(50, -6, 3.5, '#ffd43b', so(1.5)) + Ln(42, 14, 56, 18, '#ffd43b', 3) + Ln(45, 6, 54, 8, '#4dabf7', 3);
+  if (has('hero')) s += Ln(90, 130, 99, 66, '#ced4da', 5) + Ln(84, 108, 96, 112, '#fab005', 5) + Ln(90, 130, 99, 66, OL, 1.2, 'opacity=".4"');
+  if (has('bouquet')) s += Ln(66, 128, 72, 108, '#2f9e44', 3) + Ln(70, 128, 76, 108, '#2f9e44', 3) + Ci(70, 104, 6, '#ff8fab', so(1.5)) + Ci(80, 106, 6, '#ffd43b', so(1.5)) + Ci(75, 97, 6, '#ff5d73', so(1.5)) + Ci(64, 98, 5, '#b197fc', so(1.5));
+  if (has('shades')) s += Rc(32, 45, 17, 10, OL, ' rx="4"') + Rc(51, 45, 17, 10, OL, ' rx="4"') + Ln(49, 49, 51, 49, OL, 2) + Ln(33, 47, 38, 47, '#868e96', 1.5);
+  if (has('headset')) s += Pa('M24,46 Q22,14 50,14 Q78,14 76,46', 'none', so(4.5)) + Rc(19, 42, 11, 17, '#495057', so(2) + ' rx="4"') + Rc(70, 42, 11, 17, '#495057', so(2) + ' rx="4"') + Pa('M24,58 Q28,70 42,67', 'none', so(2.5)) + Ci(42, 67, 2.8, '#e03131');
+  return s;
+}
+function hairFront(look, hair, bald, f) {
+  const H = (d) => Pa(d, hair, so());
+  if (bald) return H('M24,52 Q22,38 31,33 L33,46 Z') + H('M76,52 Q78,38 69,33 L67,46 Z') + El(43, 28, 6, 3, '#ffffff', 'opacity=".55"');
+  if (!f) {
+    switch (look.hs) {
+      case 0: return H('M25,50 Q22,19 50,19 Q78,19 75,50 Q73,36 64,31 Q54,38 40,33 Q30,36 25,50 Z');
+      case 1: return H('M25,52 Q20,17 52,17 Q80,19 76,48 Q74,33 69,29 Q57,30 45,40 Q49,30 43,28 Q32,32 25,52 Z');
+      case 2: return H('M25,50 L23,30 L32,26 L33,15 L43,21 L50,10 L57,21 L67,15 L68,26 L77,30 L75,50 Q72,36 60,33 Q50,36 40,33 Q28,36 25,50 Z');
+      default: return H('M26,44 Q26,20 50,20 Q74,20 74,44 Q70,30 50,29 Q30,30 26,44 Z');
+    }
+  }
+  switch (look.hs) {
+    case 0: return H('M26,50 Q21,17 50,17 Q79,17 74,50 Q70,30 58,27 Q52,36 38,33 Q30,38 26,50 Z') + H('M26,44 Q21,70 27,92 L32,90 Q28,70 30,50 Z') + H('M74,44 Q79,70 73,92 L68,90 Q72,70 70,50 Z');
+    case 1: return H('M25,50 Q21,17 50,17 Q79,17 75,50 L74,42 Q71,31 50,31 Q29,31 26,42 Z') + H('M25,44 Q21,70 30,82 L34,80 Q28,66 29,50 Z') + H('M75,44 Q79,70 70,82 L66,80 Q72,66 71,50 Z');
+    case 2: return H('M26,48 Q21,17 50,17 Q79,17 74,48 Q66,27 50,29 Q37,29 26,48 Z');
+    default: return H('M25,52 Q19,15 52,17 Q81,19 75,50 Q72,29 60,29 Q46,40 34,33 Q28,40 25,52 Z');
+  }
+}
+function face(mood, age) {
+  let s = '';
+  const eye = (x) => Ci(x, 50, 2.9, OL) + Ci(x + 1, 49, 1, '#ffffff');
+  const brow = (x1, y1, x2, y2) => Pa(`M${x1},${y1} L${x2},${y2}`, 'none', so(2.4));
+  switch (mood) {
+    case 'happy':
+      s += Pa('M37,51 Q41,45 45,51', 'none', so(2.6)) + Pa('M55,51 Q59,45 63,51', 'none', so(2.6));
+      s += brow(36, 41, 45, 40) + brow(55, 40, 64, 41);
+      s += Pa('M42,61 Q50,72 58,61 Z', '#d6336c', so(2)) + Pa('M46,66 Q50,70 54,66 Q50,64 46,66 Z', '#ff8fab');
+      s += El(33.5, 58, 4.5, 2.6, '#ff8fab', 'opacity=".6"') + El(66.5, 58, 4.5, 2.6, '#ff8fab', 'opacity=".6"');
+      break;
+    case 'sad':
+      s += eye(41) + eye(59) + brow(36, 43, 45, 40) + brow(55, 40, 64, 43);
+      s += Pa('M44,67 Q50,61 56,67', 'none', so(2.2)) + Pa('M36,55 Q35,59 37,60', 'none', 'stroke="#74c0fc" stroke-width="2.4" stroke-linecap="round"');
+      break;
+    case 'stressed':
+      s += Pa('M37,46 L44,50 L37,54', 'none', so(2.4)) + Pa('M63,46 L56,50 L63,54', 'none', so(2.4));
+      s += Pa('M42,65 q2,-3 4,0 t4,0 t4,0 t4,0', 'none', so(2));
+      s += Pa('M78,30 Q83,39 78,42 Q73,39 78,30 Z', '#74c0fc', so(1.6));
+      s += Ln(30, 24, 34, 30, '#748ffc', 2) + Ln(70, 24, 66, 30, '#748ffc', 2);
+      break;
+    case 'tired':
+      s += Ln(37, 51, 45, 51, OL, 2.6) + Ln(55, 51, 63, 51, OL, 2.6);
+      s += Pa('M38,55 Q41,57 44,55', 'none', 'stroke="#9775fa" stroke-width="1.6" opacity=".7"') + Pa('M56,55 Q59,57 62,55', 'none', 'stroke="#9775fa" stroke-width="1.6" opacity=".7"');
+      s += Ln(45, 65, 55, 65, OL, 2.2);
+      break;
+    default:
+      s += eye(41) + eye(59) + brow(36, 42, 45, 41) + brow(55, 41, 64, 42);
+      s += Pa('M44,63 Q50,68 56,63', 'none', so(2.2));
+  }
+  s += Pa('M50,53 Q47.5,58 51,59', 'none', so(1.8));
+  if (age >= 52) s += `<g opacity=".45">${Pa('M30,47 l-3,-1.5 M30,51 l-3,1.5 M70,47 l3,-1.5 M70,51 l3,1.5', 'none', so(1.4))}</g>`;
+  if (age >= 58) s += `<g opacity=".35">${Pa('M41,61 q-2,3 -1,5 M59,61 q2,3 1,5', 'none', so(1.4))}</g>`;
+  return s;
+}
+function avatarSVG(look, o = {}, cls = 'av', vb = '0 0 100 132', ov = 'visible') {
+  return `<svg class="${cls}" viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" overflow="${ov}" style="overflow:${ov}">${avatar(look, o)}</svg>`;
+}
+const headSVG = (look, o = {}, cls = 'head') => avatarSVG(look, o, cls, '14 4 72 72', 'hidden');
+
+/* ---------------- flags (36 x 24) ---------------- */
+const FLAGS = {
+  JP: () => Rc(0, 0, 36, 24, '#fff') + Ci(18, 12, 7, '#bc002d'),
+  CN: () => Rc(0, 0, 36, 24, '#de2910') + Star(6.5, 6.5, 3.8, '#ffde00') + Star(12.5, 2.6, 1.3, '#ffde00') + Star(14.8, 5.2, 1.3, '#ffde00') + Star(14.8, 8.6, 1.3, '#ffde00') + Star(12.5, 11, 1.3, '#ffde00'),
+  KR: () => {
+    let s = Rc(0, 0, 36, 24, '#fff') + Ci(18, 12, 6, '#cd2e3a') + Pa('M12,12 A6,6 0 0,0 24,12 A3,3 0 0,0 18,12 A3,3 0 0,1 12,12 Z', '#0047a0');
+    const tri = (x, y, r) => `<g transform="translate(${x},${y}) rotate(${r})">${Rc(-3, -2.4, 6, 1.1, '#000')}${Rc(-3, -.55, 6, 1.1, '#000')}${Rc(-3, 1.3, 6, 1.1, '#000')}</g>`;
+    return s + tri(6.5, 5, -56) + tri(29.5, 5, 56) + tri(6.5, 19, 56) + tri(29.5, 19, -56);
+  },
+  VN: () => Rc(0, 0, 36, 24, '#da251d') + Star(18, 12.5, 6.5, '#ffcd00'),
+  IN: () => Rc(0, 0, 36, 8, '#ff9933') + Rc(0, 8, 36, 8, '#fff') + Rc(0, 16, 36, 8, '#138808') + Ci(18, 12, 3, 'none', 'stroke="#000080" stroke-width="1"') + Ci(18, 12, .9, '#000080'),
+  PH: () => Rc(0, 0, 36, 12, '#0038a8') + Rc(0, 12, 36, 12, '#ce1126') + Pg('0,0 20.8,12 0,24', '#fff') + Ci(7, 12, 2.6, '#fcd116') + Star(2.4, 3.2, 1.2, '#fcd116') + Star(2.4, 20.8, 1.2, '#fcd116') + Star(16.6, 12, 1.2, '#fcd116'),
+  ID: () => Rc(0, 0, 36, 12, '#e70011') + Rc(0, 12, 36, 12, '#fff'),
+  TH: () => Rc(0, 0, 36, 24, '#a51931') + Rc(0, 4, 36, 16, '#f4f5f8') + Rc(0, 8, 36, 8, '#2d2a4a'),
+  NP: () => Pg('5,1 27,12.6 12.5,12.6 27,23 5,23', '#dc143c', 'stroke="#003893" stroke-width="1.8" stroke-linejoin="miter"') + Pa('M8.5,8 A3.6,3.6 0 0,0 15.5,8 A3.6,2.6 0 0,1 8.5,8 Z', '#fff') + Star(11.6, 18.3, 2.6, '#fff', '', 12),
+  US: () => {
+    let s = ''; for (let i = 0; i < 13; i++) s += Rc(0, i * 24 / 13, 36, 24 / 13 + .05, i % 2 ? '#fff' : '#b22234');
+    s += Rc(0, 0, 14.4, 12.9, '#3c3b6e');
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++) s += Ci(1.8 + c * 2.7, 1.8 + r * 3, .55, '#fff');
+    return s;
+  },
+  GB: () => Rc(0, 0, 36, 24, '#012169') + Ln(0, 0, 36, 24, '#fff', 4.8, 'stroke-linecap="butt"') + Ln(36, 0, 0, 24, '#fff', 4.8, 'stroke-linecap="butt"') + Ln(0, 0, 36, 24, '#c8102e', 1.6, 'stroke-linecap="butt"') + Ln(36, 0, 0, 24, '#c8102e', 1.6, 'stroke-linecap="butt"') + Rc(15, 0, 6, 24, '#fff') + Rc(0, 9, 36, 6, '#fff') + Rc(16.2, 0, 3.6, 24, '#c8102e') + Rc(0, 10.2, 36, 3.6, '#c8102e'),
+  FR: () => Rc(0, 0, 12, 24, '#0055a4') + Rc(12, 0, 12, 24, '#fff') + Rc(24, 0, 12, 24, '#ef4135'),
+  DE: () => Rc(0, 0, 36, 8, '#000') + Rc(0, 8, 36, 8, '#dd0000') + Rc(0, 16, 36, 8, '#ffce00'),
+  BR: () => Rc(0, 0, 36, 24, '#009c3b') + Pg('18,2.5 33,12 18,21.5 3,12', '#ffdf00') + Ci(18, 12, 5.4, '#002776') + Pa('M12.8,11 Q18,9.2 23.2,12.8', 'none', 'stroke="#fff" stroke-width="1.1"'),
+};
+function flagSVG(code, h = 18) {
+  const border = code === 'NP' ? '' : Rc(.5, .5, 35, 23, 'none', 'stroke="rgba(0,0,0,.25)" stroke-width="1"');
+  return `<svg class="flag" viewBox="0 0 36 24" width="${h * 1.5}" height="${h}">${(FLAGS[code] || FLAGS.JP)()}${border}</svg>`;
+}
+
+/* ---------------- gacha machine (240 x 330) ---------------- */
+function machineSVG(label) {
+  const gl = uid(), cl = uid();
+  const caps = [[78, 118, '#ff5d73'], [104, 140, '#4dabf7'], [132, 132, '#ffd43b'], [160, 120, '#9775fa'], [90, 88, '#38d9a9'], [122, 98, '#ff922b'],
+    [152, 84, '#f06595'], [70, 150, '#ffd43b'], [176, 150, '#4dabf7'], [118, 166, '#9775fa'], [146, 162, '#ff5d73'], [96, 168, '#38d9a9'], [138, 62, '#4dabf7'], [104, 60, '#ffd43b']];
+  let cs = '';
+  caps.forEach(([x, y, c], i) => {
+    cs += `<g class="cap" style="animation-delay:${(i * .17).toFixed(2)}s">${Pa(`M${x - 13},${y} A13,13 0 0,1 ${x + 13},${y} Z`, c)}${Pa(`M${x - 13},${y} A13,13 0 0,0 ${x + 13},${y} Z`, '#ffffff')}${Ci(x, y, 13, 'none', so(2))}${Ln(x - 13, y, x + 13, y, OL, 1.6)}</g>`;
+  });
+  return `<svg class="machine" viewBox="0 0 240 330" xmlns="http://www.w3.org/2000/svg">
+  <defs><radialGradient id="${gl}" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff" stop-opacity=".95"/><stop offset="1" stop-color="#bde0fe" stop-opacity=".75"/></radialGradient>
+  <clipPath id="${cl}"><circle cx="120" cy="115" r="76"/></clipPath></defs>
+  ${El(120, 318, 92, 9, 'rgba(43,45,66,.18)')}
+  ${Pa('M76,46 Q120,8 164,46 Z', '#ff5d73', so(3))}${Rc(110, 14, 20, 10, '#ffd43b', so(2.5) + ' rx="4"')}
+  ${Ci(120, 115, 78, `url(#${gl})`, so(3))}
+  <g clip-path="url(#${cl})">${cs}</g>
+  ${Pa('M64,92 Q72,58 104,46', 'none', 'stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".8"')}
+  ${Rc(34, 182, 172, 132, '#ff5d73', so(3) + ' rx="20"')}
+  ${Rc(46, 194, 148, 34, '#ffffff', so(2.5) + ' rx="10"')}
+  ${Tx(120, 218, label, label.length > 8 ? 15 : 19, OL)}
+  ${Rc(56, 244, 10, 26, OL, ' rx="4"')}
+  <g class="handle" style="transform-origin:110px 268px">${Ci(110, 268, 26, '#ffd43b', so(3))}${Rc(92, 262, 36, 12, '#ffffff', so(2.5) + ' rx="6"')}${Ci(110, 268, 4, OL)}</g>
+  ${Rc(150, 266, 42, 32, OL, ' rx="8"')}${Rc(155, 271, 32, 12, '#495057', ' rx="4"')}
+  ${Rc(50, 312, 30, 10, OL, ' rx="4"')}${Rc(160, 312, 30, 10, OL, ' rx="4"')}
+  </svg>`;
+}
+/* capsule (100x100): top half colored, bottom white */
+function capsuleSVG(c1, c2) {
+  return `<svg class="capsule" viewBox="-10 -10 120 120">
+   <g class="cap-top">${Pa('M8,50 A42,42 0 0,1 92,50 Z', c1, so(3))}${Pa('M24,34 Q34,20 50,18', 'none', 'stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".7"')}</g>
+   <g class="cap-bot">${Pa('M8,50 A42,42 0 0,0 92,50 Z', c2, so(3))}${Ln(8, 50, 92, 50, OL, 3)}</g></svg>`;
+}
+
+/* ---------------- department wheel (300 x 300) ---------------- */
+function wheelSVG() {
+  const n = MODULE_KEYS.length, cx = 150, cy = 150, r = 132;
+  const pt = (a, rr) => [cx + rr * Math.sin(a * Math.PI / 180), cy - rr * Math.cos(a * Math.PI / 180)];
+  let seg = '';
+  MODULE_KEYS.forEach((k, i) => {
+    const m = MODULES[k], a0 = i * 360 / n - 180 / n, a1 = a0 + 360 / n;
+    const [x0, y0] = pt(a0, r), [x1, y1] = pt(a1, r), [tx, ty] = pt(i * 360 / n, r * .66), [lx, ly] = pt(i * 360 / n, r * .36);
+    seg += `<g class="seg" data-k="${k}">${Pa(`M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 0,1 ${x1.toFixed(1)},${y1.toFixed(1)} Z`, m.color, so(3))}
+      <text x="${tx.toFixed(1)}" y="${(ty + 11).toFixed(1)}" font-size="32" text-anchor="middle" transform="rotate(${i * 360 / n} ${tx.toFixed(1)} ${ty.toFixed(1)})">${m.icon}</text>
+      <text x="${lx.toFixed(1)}" y="${(ly + 5).toFixed(1)}" font-size="13" font-weight="900" fill="${OL}" text-anchor="middle" transform="rotate(${i * 360 / n} ${lx.toFixed(1)} ${ly.toFixed(1)})">${tt(m).slice(0, 8)}</text></g>`;
+  });
+  let dots = '';
+  for (let i = 0; i < 24; i++) { const [x, y] = pt(i * 15, 141); dots += Ci(x.toFixed(1), y.toFixed(1), 3.2, i % 2 ? '#ffd43b' : '#ffffff', so(1.2)); }
+  return `<svg class="wheel" viewBox="0 0 300 330">
+   ${Ci(150, 150, 148, '#ff5d73', so(3))}${dots}
+   <g id="wheelRot" style="transform-origin:150px 150px">${seg}</g>
+   ${Ci(150, 150, 20, '#ffffff', so(3))}${Star(150, 150, 11, '#ffd43b', so(2))}
+   ${Pg('150,32 136,2 164,2', '#ffd43b', so(3))}
+   ${Rc(118, 296, 64, 26, '#ff5d73', so(3) + ' rx="6"')}${Rc(100, 318, 100, 10, OL, ' rx="4"')}
+  </svg>`;
+}
+/* ============================ ART: SCENES (360 x 220) ============================ */
+function skyGrad(id, c1, c2) { return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>`; }
+function cloud(x, y, s = 1, f = '#ffffff', cls = '') {
+  return `<g class="${cls}"><g transform="translate(${x},${y}) scale(${s})">${Ci(0, 0, 14, f)}${Ci(16, -6, 18, f)}${Ci(34, 0, 14, f)}${Rc(0, 0, 34, 14, f)}</g></g>`;
+}
+function skyline(x0, base, w, seed, col, lit) {
+  const r = seeded(seed); let s = '', x = x0;
+  while (x < x0 + w) {
+    const bw = 14 + Math.floor(r() * 16), bh = 24 + Math.floor(r() * 56);
+    s += Rc(x, base - bh, bw, bh, col, `stroke="${shade(col, -.25)}" stroke-width="1"`);
+    for (let yy = base - bh + 5; yy < base - 5; yy += 8) for (let xx = x + 3; xx < x + bw - 4; xx += 6) if (r() < .45) s += Rc(xx, yy, 3, 4, lit);
+    x += bw + 2;
+  }
+  return s;
+}
+const person = (x, y, s, c) => `<g transform="translate(${x},${y}) scale(${s})">${Ci(0, 0, 14, c, so(2))}${Pa('M-26,56 Q-24,22 0,20 Q24,22 26,56 Z', c, so(2))}</g>`;
+const flame = (x, y, s = 1) => `<g class="flicker" style="transform-origin:${x}px ${y}px">${Pa(`M${x},${y} Q${x - 14 * s},${y - 16 * s} ${x - 4 * s},${y - 30 * s} Q${x},${y - 20 * s} ${x + 6 * s},${y - 38 * s} Q${x + 18 * s},${y - 18 * s} ${x + 12 * s},${y} Z`, '#ff922b', so(2))}${Pa(`M${x + 2 * s},${y} Q${x - 4 * s},${y - 10 * s} ${x + 3 * s},${y - 20 * s} Q${x + 10 * s},${y - 10 * s} ${x + 9 * s},${y} Z`, '#ffd43b')}</g>`;
+const steam = (x, y) => `<g class="steam">${Pa(`M${x},${y} q-5,-7 0,-14 q5,-7 0,-14`, 'none', 'stroke="#adb5bd" stroke-width="2.5" stroke-linecap="round"')}${Pa(`M${x + 9},${y + 2} q-5,-7 0,-14 q5,-7 0,-14`, 'none', 'stroke="#adb5bd" stroke-width="2.5" stroke-linecap="round" style="animation-delay:.6s"')}</g>`;
+const mug = (x, y, c) => Rc(x, y, 20, 22, c, so(2.5) + ' rx="4"') + Pa(`M${x + 20},${y + 6} q9,0 9,7 q0,7 -9,7`, 'none', so(2.5));
+const plant = (x, y) => Pa(`M${x + 13},${y} Q${x - 6},${y - 22} ${x + 2},${y - 40} Q${x + 12},${y - 22} ${x + 13},${y}`, '#40c057', so(2)) + Pa(`M${x + 13},${y} Q${x + 34},${y - 20} ${x + 26},${y - 38} Q${x + 14},${y - 20} ${x + 13},${y}`, '#69db7c', so(2)) + Rc(x, y, 26, 26, '#f08c00', so(2.5) + ' rx="3"');
+const cat = (x, y) => El(x, y + 10, 19, 12, '#ffa94d', so(2)) + Pa(`M${x + 16},${y + 8} q16,-6 10,-22`, 'none', 'stroke="#ffa94d" stroke-width="6" stroke-linecap="round"') + Ci(x - 15, y - 2, 11, '#ffa94d', so(2)) + Pg(`${x - 24},${y - 6} ${x - 22},${y - 18} ${x - 15},${y - 11}`, '#ffa94d', so(1.8)) + Pg(`${x - 13},${y - 12} ${x - 6},${y - 18} ${x - 6},${y - 6}`, '#ffa94d', so(1.8)) + Ln(x - 19, y - 2, x - 17, y - 2, OL, 2) + Ln(x - 12, y - 2, x - 10, y - 2, OL, 2) + Ln(x + 2, y + 2, x + 2, y + 10, '#e8590c', 2) + Ln(x + 8, y + 2, x + 8, y + 10, '#e8590c', 2);
+const heart = (x, y, s, f, cls = '') => `<g class="${cls}"><g transform="translate(${x},${y}) scale(${s})">${Pa('M0,6 C-12,-4 -6,-14 0,-7 C6,-14 12,-4 0,6 Z', f, so(1.5))}</g></g>`;
+const sun = (x, y, r) => { let s = ''; for (let i = 0; i < 12; i++) { const a = i * 30 * Math.PI / 180; s += Ln(x + Math.cos(a) * (r + 5), y + Math.sin(a) * (r + 5), x + Math.cos(a) * (r + 13), y + Math.sin(a) * (r + 13), '#fcc419', 3); } return `<g class="spin-slow" style="transform-origin:${x}px ${y}px">${s}</g>` + Ci(x, y, r, '#ffd43b', so(2.5)); };
+const stars = (n, seed, h = 120) => { const r = seeded(seed); let s = ''; for (let i = 0; i < n; i++) s += Ci((r() * 360).toFixed(0), (r() * h).toFixed(0), (r() * 1.4 + .6).toFixed(1), '#fff', `class="twinkle" style="animation-delay:${(r() * 2).toFixed(1)}s"`); return s; };
+const J = (ja, en) => (L === 'ja' ? ja : en);
+
+const SCN = {
+  office(a) {
+    const g = uid(), c = uid();
+    return skyGrad(g, '#a5d8ff', '#e7f5ff') + `<defs><clipPath id="${c}"><rect x="20" y="16" width="144" height="96" rx="6"/></clipPath></defs>`
+      + Rc(0, 0, 360, 220, '#fff4e6') + Rc(0, 124, 360, 8, '#ffe8cc')
+      + Rc(20, 16, 144, 96, `url(#${g})`, so(3) + ' rx="6"') + `<g clip-path="url(#${c})">${cloud(36, 34, .7)}${skyline(20, 112, 146, 7, '#91a7ff', '#fff3bf')}</g>`
+      + Ln(92, 16, 92, 112, OL, 3) + Ln(20, 64, 164, 64, OL, 3)
+      + Rc(196, 22, 78, 54, '#ffffff', so(2.5) + ' rx="4"') + Rc(208, 52, 10, 14, '#4dabf7') + Rc(224, 44, 10, 22, '#38d9a9') + Rc(240, 34, 10, 32, '#ff5d73') + Ln(204, 66, 264, 66, OL, 2)
+      + Ci(318, 40, 20, '#ffffff', so(3)) + Ln(318, 40, 318, 28) + Ln(318, 40, 327, 45)
+      + a(122, 56, 1.05)
+      + Rc(-4, 160, 368, 12, '#d08c60', so(3)) + Rc(8, 172, 344, 52, '#b5764b', so(3)) + Ln(180, 180, 180, 220, OL, 2) + Rc(150, 190, 22, 5, '#ffd43b', ' rx="2"') + Rc(188, 190, 22, 5, '#ffd43b', ' rx="2"')
+      + Rc(232, 96, 106, 64, OL, ' rx="6"') + Rc(238, 102, 94, 48, '#1c7ed6', ' rx="2"')
+      + Rc(244, 108, 40, 4, '#a5d8ff') + Rc(244, 116, 60, 4, '#ffd43b') + Rc(252, 124, 36, 4, '#a5d8ff') + Rc(244, 132, 52, 4, '#63e6be') + Rc(252, 140, 30, 4, '#ffa8a8') + Rc(278, 150, 14, 10, OL)
+      + mug(58, 138, '#ff5d73') + steam(64, 132) + Rc(92, 150, 32, 10, '#ffffff', so(2)) + Rc(96, 143, 32, 8, '#ffffff', so(2))
+      + plant(16, 134);
+  },
+  night(a) {
+    const c = uid();
+    return Rc(0, 0, 360, 220, '#262b4f') + `<defs><clipPath id="${c}"><rect x="18" y="14" width="190" height="104" rx="6"/></clipPath></defs>`
+      + Rc(18, 14, 190, 104, '#0b1026', so(3) + ' rx="6"') + `<g clip-path="url(#${c})">${stars(26, 3, 70)}${Ci(176, 38, 14, '#ffe066')}${Ci(183, 33, 12, '#0b1026')}${skyline(18, 118, 192, 11, '#364fc7', '#ffd43b')}</g>`
+      + Ln(113, 14, 113, 118, OL, 3)
+      + Ci(300, 42, 20, '#ffffff', so(3)) + Ln(300, 42, 300, 30) + Ln(300, 42, 311, 42) + Tx(300, 80, '3:00', 12, '#ffd43b')
+      + Pg('262,58 222,160 312,160', 'rgba(255,236,153,.25)') + Ln(262, 58, 290, 120, OL, 3) + Pa('M250,50 L274,50 L268,62 L256,62 Z', '#fab005', so(2))
+      + a(116, 56, 1.05)
+      + Rc(-4, 160, 368, 12, '#6b4f3a', so(3)) + Rc(8, 172, 344, 52, '#4e3a2b', so(3))
+      + [0, 1, 2, 3].map(i => Rc(20 + i * 22, 140 - (i % 2) * 4, 16, 20 + (i % 2) * 4, i % 2 ? '#fff' : '#e7f5ff', so(2) + ' rx="2"')).join('')
+      + Rc(236, 104, 86, 56, OL, ' rx="5"') + Rc(242, 110, 74, 42, '#3b5bdb') + Rc(248, 116, 50, 4, '#ff8787') + Rc(248, 124, 30, 4, '#ff8787') + Rc(248, 132, 56, 4, '#fff') + Rc(272, 152, 14, 8, OL)
+      + Tx(60, 112, 'Zzz', 14, '#748ffc', 'class="float"');
+  },
+  meeting(a) {
+    return Rc(0, 0, 360, 220, '#e7f5ff') + Rc(0, 176, 360, 44, '#bac8ff')
+      + Rc(14, 12, 196, 108, '#ffffff', so(3) + ' rx="6"') + Ln(30, 104, 196, 104, OL, 2) + Ln(30, 104, 30, 26, OL, 2)
+      + Rc(44, 80, 20, 24, '#74c0fc') + Rc(76, 66, 20, 38, '#63e6be') + Rc(108, 52, 20, 52, '#ffd43b') + Rc(140, 36, 20, 68, '#ff8787')
+      + Pa('M40,90 L84,70 L118,58 L170,28', 'none', 'stroke="#e03131" stroke-width="3" stroke-linecap="round"') + Pg('170,22 176,32 164,32', '#e03131')
+      + a(40, 70, .98)
+      + person(256, 98, 1, '#5c7cfa') + person(318, 104, .95, '#4c6ef5')
+      + Rc(176, 150, 196, 16, '#dee2e6', so(3) + ' rx="4"') + Rc(192, 166, 10, 40, '#adb5bd', so(2)) + Rc(344, 166, 10, 40, '#adb5bd', so(2))
+      + Rc(206, 138, 26, 12, '#ffffff', so(1.8)) + mug(300, 128, '#ffd43b');
+  },
+  classroom(a) {
+    return Rc(0, 0, 360, 220, '#fff9db') + Rc(0, 184, 360, 36, '#e9b872')
+      + Rc(18, 12, 222, 100, '#2f9e44', so(3) + ' rx="4"') + Rc(14, 110, 230, 8, '#c68b59', so(2))
+      + Tx(150, 42, 'ERP 101', 16, '#ffffff') + Rc(36, 60, 42, 22, 'none', 'stroke="#fff" stroke-width="2"') + Rc(106, 60, 42, 22, 'none', 'stroke="#fff" stroke-width="2"') + Rc(176, 60, 42, 22, 'none', 'stroke="#fff" stroke-width="2"')
+      + Tx(57, 76, 'GL', 11, '#fff') + Tx(127, 76, 'AP', 11, '#fff') + Tx(197, 76, 'AR', 11, '#fff') + Ln(80, 71, 102, 71, '#fff', 2) + Ln(150, 71, 172, 71, '#fff', 2)
+      + Rc(262, 22, 80, 58, '#ffffff', so(2.5)) + Rc(270, 32, 64, 5, '#adb5bd') + Rc(270, 42, 50, 5, '#adb5bd') + Ci(326, 68, 9, '#ff5d73', so(2)) + Pg('320,74 318,90 326,84 334,90 332,74', '#ff5d73', so(1.5))
+      + a(126, 62, 1.02)
+      + Rc(70, 160, 220, 14, '#e9b872', so(3)) + Rc(82, 174, 196, 46, '#d39a5c', so(3))
+      + Rc(236, 146, 54, 12, '#4dabf7', so(2)) + Rc(240, 134, 46, 12, '#ff5d73', so(2)) + Rc(234, 122, 52, 12, '#ffd43b', so(2))
+      + Ln(96, 154, 128, 146, '#ffd43b', 6) + Ln(96, 154, 128, 146, OL, 1);
+  },
+  izakaya(a) {
+    let planks = ''; for (let x = 0; x < 360; x += 30) planks += Ln(x, 40, x, 160, '#4a2f22', 2);
+    const lantern = (x, y) => El(x, y, 20, 26, '#e03131', so(2.5)) + Ln(x - 18, y - 8, x + 18, y - 8, '#a61e1e', 1.5) + Ln(x - 20, y, x + 20, y, '#a61e1e', 1.5) + Ln(x - 18, y + 8, x + 18, y + 8, '#a61e1e', 1.5) + Rc(x - 10, y - 30, 20, 6, OL, ' rx="2"') + Rc(x - 10, y + 24, 20, 6, OL, ' rx="2"') + `<circle cx="${x}" cy="${y}" r="34" fill="#ffd43b" opacity=".18" class="glow"/>`;
+    const beer = (x, y) => Rc(x, y, 30, 36, '#fcc419', so(2.5) + ' rx="4"') + El(x + 15, y, 17, 7, '#ffffff', so(2)) + Pa(`M${x + 30},${y + 8} q12,0 12,10 q0,10 -12,10`, 'none', so(3));
+    return Rc(0, 0, 360, 220, '#6d4430') + planks + Rc(0, 0, 360, 40, '#1c3d6e', so(3)) + Ln(120, 6, 120, 40, '#fff', 2) + Ln(240, 6, 240, 40, '#fff', 2) + Ci(180, 20, 10, 'none', 'stroke="#fff" stroke-width="3"')
+      + lantern(52, 86) + lantern(310, 86)
+      + Rc(98, 52, 22, 56, '#fff3bf', so(1.5)) + Tx(109, 86, J('酒', 'BAR'), J(15, 9)) + Rc(236, 52, 22, 56, '#fff3bf', so(1.5)) + Tx(247, 86, J('鳥', 'BBQ'), J(15, 9))
+      + a(128, 58, 1.02)
+      + Rc(-4, 160, 368, 14, '#e8b06a', so(3)) + Rc(0, 174, 360, 46, '#8a4b2a', so(3))
+      + beer(58, 126) + beer(262, 126)
+      + El(196, 164, 28, 6, '#ffffff', so(2)) + Ln(176, 158, 214, 150, '#c68b59', 2) + [0, 1, 2].map(i => Ci(184 + i * 9, 156 - i * 2, 4, '#a0522d', so(1.2))).join('');
+  },
+  stage(a, S, o) {
+    const banner = o.id === 'award' || o.id === 'ceo' ? J('社長賞', 'AWARD') : J('忘年会', 'PARTY!');
+    let scallop = ''; for (let x = 10; x < 360; x += 24) scallop += Ci(x, 26, 12, '#a61e4d', so(2));
+    return Rc(0, 0, 360, 220, '#3b2c5e') + Pg('180,0 100,190 260,190', 'rgba(255,236,153,.35)', 'class="glow"')
+      + Pa('M0,0 L72,0 Q60,110 80,220 L0,220 Z', '#c92a2a', so(3)) + Pa('M360,0 L288,0 Q300,110 280,220 L360,220 Z', '#c92a2a', so(3))
+      + Pa('M24,0 Q18,110 30,220 M50,0 Q40,110 56,220 M336,0 Q342,110 330,220 M310,0 Q320,110 304,220', 'none', 'stroke="#a61e1e" stroke-width="2.5"')
+      + Rc(0, 0, 360, 24, '#a61e4d', so(3)) + scallop
+      + Rc(116, 40, 128, 26, '#ffd43b', so(2.5) + ' rx="6"') + Tx(180, 59, '★ ' + banner + ' ★', 14)
+      + a(128, 64, 1.0)
+      + Ln(262, 118, 262, 188, OL, 3) + El(262, 114, 6, 9, '#495057', so(2)) + Rc(248, 186, 28, 5, OL, ' rx="2"')
+      + Rc(0, 186, 360, 34, '#8d5524', so(3));
+  },
+  server(a) {
+    const rack = (x) => { let s = Rc(x, 18, 58, 158, '#343a40', so(3) + ' rx="4"'); const cols = ['#69db7c', '#4dabf7', '#ffd43b', '#69db7c', '#ff8787', '#69db7c', '#4dabf7']; for (let j = 0; j < 7; j++) s += Rc(x + 6, 26 + j * 21, 46, 15, '#495057', ' rx="2"') + Ci(x + 13, 33.5 + j * 21, 2.4, cols[(j + x) % 7], `class="blink" style="animation-delay:${((j * 37 + x) % 10) / 10}s"`) + Rc(x + 20, 32 + j * 21, 26, 3, '#212529'); return s; };
+    return Rc(0, 0, 360, 220, '#14324f') + Rc(0, 176, 360, 44, '#1d4268', so(3)) + Ln(0, 196, 360, 196, '#2b5a87', 1.5)
+      + rack(12) + rack(76) + rack(290) + cloud(184, 34, .8, '#a5d8ff')
+      + Pa('M134,176 Q150,150 180,170', 'none', 'stroke="#ff922b" stroke-width="3"')
+      + a(136, 60, 1.02);
+  },
+  airport(a) {
+    const g = uid();
+    return skyGrad(g, '#74c0fc', '#e7f5ff') + Rc(0, 0, 360, 220, `url(#${g})`) + cloud(26, 40, .8) + cloud(250, 66, .6)
+      + `<g class="fly">${El(260, 40, 46, 11, '#ffffff', so(2.5))}${Pg('248,40 226,16 238,16 270,40', '#4dabf7', so(2))}${Pg('248,42 226,66 238,66 270,42', '#4dabf7', so(2))}${Pg('214,38 204,20 214,20 226,36', '#ff5d73', so(2))}${[0, 1, 2, 3, 4].map(i => Ci(266 + i * 7, 37, 2, '#4dabf7')).join('')}</g>`
+      + Rc(300, 74, 18, 100, '#dee2e6', so(2.5)) + Rc(290, 58, 38, 18, '#4dabf7', so(2.5) + ' rx="3"')
+      + Rc(0, 172, 360, 48, '#adb5bd', so(3)) + [0, 1, 2, 3, 4, 5].map(i => Rc(i * 64, 194, 36, 5, '#ffffff')).join('')
+      + a(104, 60, 1.02) + Rc(214, 142, 36, 44, '#ff922b', so(2.5) + ' rx="6"') + Pa('M224,142 L224,132 L240,132 L240,142', 'none', so(2.5)) + Ln(214, 160, 250, 160, OL, 2);
+  },
+  phone(a) {
+    let rays = ''; for (let i = 0; i < 12; i++) { const an = i * 30 * Math.PI / 180; rays += Pg(`275,100 ${275 + Math.cos(an) * 300},${100 + Math.sin(an) * 300} ${275 + Math.cos(an + .2) * 300},${100 + Math.sin(an + .2) * 300}`, 'rgba(255,255,255,.35)'); }
+    return Rc(0, 0, 360, 220, '#d0bfff') + rays + Rc(0, 192, 360, 28, '#b197fc')
+      + `<g class="shake-soft">${Rc(222, 18, 108, 188, OL, ' rx="18"')}${Rc(230, 32, 92, 152, '#f8f9fa', ' rx="6"')}
+        ${Ci(276, 82, 20, '#495057')}${Rc(259, 74, 34, 9, OL, ' rx="3"')}${Pa('M246,140 Q248,106 276,104 Q304,106 306,140 Z', '#495057')}
+        ${Tx(276, 128, '¥↑', 16, '#2f9e44')}${Ci(254, 164, 10, '#40c057')}${Ci(298, 164, 10, '#fa5252')}</g>`
+      + Pa('M206,40 q-10,12 0,24 M196,32 q-18,20 0,40', 'none', 'stroke="#5f3dc4" stroke-width="3" stroke-linecap="round" class="blink"')
+      + a(52, 62, 1.05);
+  },
+  home(a) {
+    let dots = ''; for (let y = 10; y < 120; y += 20) for (let x = 10 + (y % 40); x < 360; x += 40) dots += Ci(x, y, 2.5, '#c3fae8');
+    return Rc(0, 0, 360, 220, '#e6fcf5') + dots + Rc(28, 18, 112, 82, '#a5d8ff', so(3) + ' rx="4"') + cloud(50, 50, .5) + Pa('M28,18 Q50,60 40,100 L28,100 Z', '#ffa8a8', so(2)) + Pa('M140,18 Q118,60 128,100 L140,100 Z', '#ffa8a8', so(2))
+      + Rc(222, 22, 62, 46, '#ffffff', so(2.5)) + Pg('228,62 248,38 262,52 270,44 280,62', '#69db7c', so(1.5)) + Ci(270, 32, 5, '#ffd43b')
+      + Rc(70, 114, 220, 66, '#748ffc', so(3) + ' rx="18"')
+      + a(130, 50, 1.0)
+      + Rc(60, 160, 240, 34, '#5c7cfa', so(3) + ' rx="10"') + Rc(46, 128, 30, 66, '#5c7cfa', so(3) + ' rx="10"') + Rc(284, 128, 30, 66, '#5c7cfa', so(3) + ' rx="10"')
+      + cat(300, 112) + Rc(0, 194, 360, 26, '#c3a37a', so(2))
+      + Ln(330, 194, 330, 120, OL, 3) + Pa('M316,124 L344,124 L338,104 L322,104 Z', '#ffe066', so(2));
+  },
+  wedding(a) {
+    let fl = ''; for (let i = 0; i <= 10; i++) { const an = Math.PI - i * Math.PI / 10; fl += Ci(180 + Math.cos(an) * 112, 106 - Math.sin(an) * 84, 9, ['#ff8fab', '#ffffff', '#ffd43b'][i % 3], so(1.5)); }
+    return Rc(0, 0, 360, 220, '#fff0f6') + heart(40, 40, 1.4, '#ffa8c5', 'float') + heart(320, 60, 1.2, '#ff8fab', 'float') + heart(300, 170, 1, '#fcc2d7', 'float') + heart(52, 150, 1.1, '#ff8fab', 'float')
+      + Pa('M68,210 L68,106 Q68,22 180,22 Q292,22 292,106 L292,210', 'none', 'stroke="#fcc2d7" stroke-width="14"') + fl
+      + Pa('M170,40 Q170,28 180,28 Q190,28 190,40 L194,48 L166,48 Z', '#fcc419', so(2))
+      + a(130, 60, 1.02)
+      + Rc(232, 166, 34, 26, '#d6336c', so(2.5) + ' rx="4"') + Ci(249, 158, 9, 'none', 'stroke="#fcc419" stroke-width="3.5"') + Pg('249,145 244,150 249,154 254,150', '#a5d8ff', so(1.2))
+      + Rc(0, 196, 360, 24, '#ffdeeb');
+  },
+  clinic(a) {
+    return Rc(0, 0, 360, 220, '#ebfbee') + Rc(0, 186, 360, 34, '#dee2e6', so(2))
+      + Rc(24, 30, 64, 86, '#c68b59', so(2.5) + ' rx="4"') + Rc(31, 42, 50, 66, '#ffffff') + Rc(46, 26, 20, 8, '#adb5bd', so(1.5)) + Pa('M36,56 l4,4 l7,-8 M36,74 l4,4 l7,-8', 'none', 'stroke="#2f9e44" stroke-width="2.5"') + Rc(52, 56, 22, 3, '#adb5bd') + Rc(52, 74, 22, 3, '#adb5bd') + Pa('M36,92 l8,8 M44,92 l-8,8', 'none', 'stroke="#e03131" stroke-width="2.5"') + Rc(52, 94, 22, 3, '#adb5bd')
+      + Rc(232, 24, 112, 72, OL, ' rx="8"') + Pa('M240,64 L262,64 L270,42 L280,84 L290,52 L298,64 L336,64', 'none', 'stroke="#69db7c" stroke-width="3" stroke-linejoin="round" class="blink"')
+      + Rc(300, 110, 40, 12, '#40c057', so(2)) + Rc(314, 96, 12, 40, '#40c057', so(2))
+      + a(124, 60, 1.02)
+      + Rc(234, 176, 62, 14, '#ffffff', so(2.5) + ' rx="4"') + Rc(254, 179, 22, 7, '#4dabf7', ' rx="2"');
+  },
+  city(a, S, o) {
+    const g = uid();
+    let walk = ''; for (let x = 0; x < 360; x += 26) walk += Rc(x, 196, 14, 8, '#ffffff');
+    let extra;
+    if (o.deco === 'money') {
+      let aw = ''; for (let i = 0; i < 6; i++) aw += Rc(230 + i * 18.3, 62, 18.3, 16, i % 2 ? '#ffffff' : '#e03131', so(1.5));
+      extra = Rc(234, 78, 104, 100, '#ffffff', so(3)) + aw + Rc(244, 86, 84, 22, '#e03131', so(2) + ' rx="4"') + Tx(286, 103, J('宝くじ', 'LOTTO'), 14, '#ffffff') + Rc(248, 116, 76, 40, '#fff3bf', so(2)) + Ci(286, 132, 10, '#adb5bd');
+    } else {
+      extra = Ci(258, 166, 18, 'none', so(5)) + Ci(320, 166, 18, 'none', so(5)) + Pa('M258,166 L282,140 L310,140 L320,166 M276,140 L270,128 L284,128', 'none', 'stroke="#e03131" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"') + Rc(282, 128, 28, 10, '#495057', so(2) + ' rx="4"');
+    }
+    return skyGrad(g, '#a5d8ff', '#e7f5ff') + Rc(0, 0, 360, 220, `url(#${g})`) + skyline(0, 180, 360, 21, '#bac8ff', '#ffffff')
+      + Rc(0, 180, 360, 40, '#495057', so(3)) + walk + extra + a(84, 64, 1.0);
+  },
+  golf(a) {
+    const g = uid();
+    return skyGrad(g, '#74c0fc', '#d0ebff') + Rc(0, 0, 360, 220, `url(#${g})`) + sun(310, 42, 20) + cloud(40, 40, .7) + cloud(170, 26, .5)
+      + Pa('M0,140 Q90,100 180,130 Q270,160 360,120 L360,220 L0,220 Z', '#69db7c', so(3)) + Pa('M0,180 Q120,150 240,176 Q300,188 360,170 L360,220 L0,220 Z', '#40c057', so(3))
+      + Ln(272, 82, 272, 146, OL, 3) + Pg('272,82 300,92 272,102', '#ff5d73', so(2)) + El(272, 148, 9, 3, OL)
+      + a(96, 60, 1.0) + Ln(196, 118, 224, 190, '#adb5bd', 4) + Rc(214, 186, 20, 8, '#495057', so(1.5) + ' rx="3"') + Ci(246, 192, 5, '#ffffff', so(1.5));
+  },
+  cafe(a) {
+    let bricks = ''; for (let y = 0; y < 170; y += 16) for (let x = (y / 16) % 2 ? -16 : 0; x < 360; x += 32) bricks += Rc(x, y, 30, 14, '#e8a87c', 'stroke="#c97a50" stroke-width="1"');
+    return Rc(0, 0, 360, 220, '#d98f66') + bricks
+      + Rc(234, 16, 110, 84, OL, so(3) + ' rx="4"') + Tx(289, 42, 'MENU', 13, '#ffffff') + Rc(248, 52, 60, 3, '#ffffff', 'opacity=".7"') + Rc(248, 64, 76, 3, '#ffffff', 'opacity=".7"') + Rc(248, 76, 50, 3, '#ffffff', 'opacity=".7"')
+      + Ln(60, 0, 60, 30, OL, 2) + Ci(60, 36, 8, '#ffe066', so(2) + ' class="glow"') + Ln(160, 0, 160, 20, OL, 2) + Ci(160, 26, 8, '#ffe066', so(2) + ' class="glow"')
+      + a(84, 56, 1.03)
+      + Rc(-4, 164, 368, 12, '#8d6e63', so(3)) + Rc(8, 176, 344, 44, '#6d4c41', so(3))
+      + Pg('204,164 300,164 292,118 212,118', '#ced4da', so(2.5)) + Pa('M246,150 L252,130 L258,150 Z', '#ff5d73', so(1.5)) + Ci(252, 138, 2.5, '#4dabf7') + Pa('M247,150 L252,158 L257,150', '#ffd43b', so(1.2))
+      + Rc(310, 142, 22, 22, '#ffffff', so(2.5) + ' rx="4"') + El(321, 144, 9, 3, '#c68b59') + steam(316, 136);
+  },
+  fire(a) {
+    const g = uid();
+    let win = ''; for (let r = 0; r < 5; r++) for (let c = 0; c < 4; c++) win += Rc(212 + c * 27, 46 + r * 28, 18, 18, (r + c) % 3 === 0 ? '#ffa94d' : '#a5d8ff', so(1.5));
+    return skyGrad(g, '#ffc078', '#fff4e6') + Rc(0, 0, 360, 220, `url(#${g})`)
+      + cloud(220, 10, .8, '#adb5bd', 'float') + cloud(290, 20, .6, '#ced4da', 'float')
+      + Rc(200, 34, 124, 160, '#ced4da', so(3)) + win
+      + flame(214, 40, 1.1) + flame(250, 36, 1.4) + flame(292, 38, 1.2) + flame(316, 44, .9) + flame(236, 108, .7) + flame(290, 136, .7)
+      + Rc(0, 190, 360, 30, '#868e96', so(3))
+      + a(56, 62, 1.02) + Rc(164, 128, 22, 54, '#e03131', so(2.5) + ' rx="6"') + Rc(168, 120, 14, 10, OL, ' rx="2"') + Pa('M182,124 Q196,116 196,104', 'none', so(3)) + Ci(198, 98, 5, '#e7f5ff', 'class="float"');
+  },
+  train(a) {
+    const g = uid();
+    let wins = ''; for (let x = 20; x < 290; x += 30) wins += Rc(x, 134, 20, 13, '#364fc7', ' rx="3"');
+    return skyGrad(g, '#a5d8ff', '#f1f3f5') + Rc(0, 0, 360, 220, `url(#${g})`) + cloud(260, 30, .6)
+      + Pg('40,130 140,30 240,130', '#4c6ef5', so(3)) + Pa('M113,57 L140,30 L167,57 L157,52 L149,61 L140,51 L131,61 L123,52 Z', '#ffffff', so(2))
+      + Pa('M0,130 Q80,110 160,128 Q260,140 360,118 L360,140 L0,140 Z', '#8ce99a', so(2))
+      + `<g class="slide">${Pa('M-20,124 L250,124 Q336,124 356,176 L-20,176 Z', '#ffffff', so(3))}${Rc(-20, 158, 360, 6, '#1c7ed6')}${wins}${Pa('M300,130 Q330,134 342,154 L300,154 Z', '#364fc7')}</g>`
+      + Rc(0, 176, 360, 44, '#adb5bd', so(3)) + Rc(0, 184, 360, 5, '#ffd43b')
+      + a(30, 72, .98) + Rc(140, 160, 30, 38, '#ff922b', so(2.5) + ' rx="5"');
+  },
+  vegas(a) {
+    const g = uid();
+    return skyGrad(g, '#2b0f54', '#5f3dc4') + Rc(0, 0, 360, 220, `url(#${g})`) + stars(20, 9, 60)
+      + Rc(18, 16, 128, 46, 'none', 'stroke="#ff6bcb" stroke-width="5" rx="10" class="glow"') + Tx(82, 48, 'CASINO', 20, '#ffd8f5')
+      + Pg(starPts(196, 40, 24), 'none', 'stroke="#ffe066" stroke-width="4" class="glow"')
+      + Rc(240, 54, 98, 136, '#e03131', so(3) + ' rx="12"') + Rc(252, 78, 74, 38, '#ffffff', so(2.5)) + Tx(264, 105, '7', 22, '#e03131') + Tx(289, 105, '7', 22, '#e03131') + Tx(314, 105, '7', 22, '#e03131')
+      + Rc(256, 128, 66, 14, '#ffd43b', so(2)) + Ln(344, 92, 354, 64, OL, 3) + Ci(354, 60, 6, '#ffd43b', so(2))
+      + Rc(0, 190, 360, 30, '#3b0a6e', so(3))
+      + a(108, 60, 1.02) + Ci(226, 190, 7, '#ffd43b', so(1.5)) + Ci(214, 194, 7, '#ffd43b', so(1.5));
+  },
+  boardroom(a) {
+    const g = uid(), c = uid();
+    return skyGrad(g, '#74c0fc', '#d0ebff') + `<defs><clipPath id="${c}"><rect x="18" y="14" width="170" height="96"/></clipPath></defs>`
+      + Rc(0, 0, 360, 220, '#6d4c41') + Ln(120, 0, 120, 220, '#5d4037', 2) + Ln(240, 0, 240, 220, '#5d4037', 2)
+      + Rc(18, 14, 170, 96, `url(#${g})`, so(3)) + `<g clip-path="url(#${c})">${skyline(18, 110, 172, 33, '#748ffc', '#e7f5ff')}</g>`
+      + Rc(212, 16, 130, 82, OL, ' rx="6"') + Pa('M222,86 L250,70 L272,76 L300,46 L332,30', 'none', 'stroke="#69db7c" stroke-width="3.5" stroke-linecap="round"') + Pg('332,24 338,34 326,34', '#69db7c')
+      + person(34, 122, .75, '#343a40') + person(326, 122, .75, '#343a40')
+      + a(128, 54, 1.02)
+      + Pa('M6,168 L354,168 L340,204 L20,204 Z', '#3e2723', so(3)) + Rc(0, 204, 360, 16, '#4e342e');
+  },
+  bus(a) {
+    const g = uid(), c = uid();
+    return skyGrad(g, '#74c0fc', '#e7f5ff') + `<defs><clipPath id="${c}"><rect x="14" y="14" width="332" height="108" rx="18"/></clipPath></defs>`
+      + Rc(0, 0, 360, 220, '#ffe8cc')
+      + Rc(14, 14, 332, 108, `url(#${g})`, so(3) + ' rx="18"')
+      + `<g clip-path="url(#${c})"><g class="slide">${Pa('M-40,100 L30,50 L90,96 L150,40 L230,100 L300,56 L380,100 L460,48 L540,100 Z', '#69db7c', so(2))}${Rc(-40, 98, 600, 30, '#4dabf7')}</g>${sun(300, 40, 14)}</g>`
+      + Ln(180, 14, 180, 122, OL, 3) + Ln(30, 0, 30, 30, '#adb5bd', 2) + Ci(30, 36, 6, 'none', 'stroke="#adb5bd" stroke-width="3"') + Ln(330, 0, 330, 30, '#adb5bd', 2) + Ci(330, 36, 6, 'none', 'stroke="#adb5bd" stroke-width="3"')
+      + Rc(110, 104, 140, 120, '#e64980', so(3) + ' rx="18"') + Rc(126, 110, 108, 20, '#ffffff', so(2) + ' rx="6"')
+      + a(130, 62, 1.0)
+      + Rc(8, 132, 96, 96, '#d6336c', so(3) + ' rx="16"') + Rc(256, 132, 96, 96, '#d6336c', so(3) + ' rx="16"')
+      + `<g transform="translate(196,150) rotate(12)">${Rc(0, 0, 22, 36, OL, ' rx="4"')}${Rc(3, 4, 16, 26, '#fff3bf', ' rx="2"')}${Pa('M5,17 A6,6 0 0,1 17,17 Z', '#ff5d73')}${Pa('M5,17 A6,6 0 0,0 17,17 Z', '#ffffff')}</g>`;
+  },
+  magic(a) {
+    return Rc(0, 0, 360, 220, '#1a1033') + stars(40, 17, 200)
+      + `<defs><linearGradient id="mp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#da77f2" stop-opacity="0"/><stop offset="1" stop-color="#da77f2" stop-opacity=".55"/></linearGradient></defs>`
+      + Rc(90, 0, 180, 196, 'url(#mp)', 'class="glow"')
+      + `<g transform="translate(180,192) scale(1,.22)"><g class="spin-slow" style="transform-origin:0px 0px">${Ci(0, 0, 150, 'none', 'stroke="#e599f7" stroke-width="10"')}${Ci(0, 0, 122, 'none', 'stroke="#e599f7" stroke-width="6"')}${Pg(starPts(0, 0, 122, .5, 6), 'none', 'stroke="#f3d9fa" stroke-width="7"')}</g></g>`
+      + `<g class="float">${a(130, 40, 1.0)}</g>`
+      + Pg(starPts(60, 60, 8), '#fff3bf', 'class="twinkle"') + Pg(starPts(300, 90, 10), '#fff3bf', 'class="twinkle" style="animation-delay:.5s"') + Pg(starPts(80, 160, 6), '#fff3bf', 'class="twinkle" style="animation-delay:1s"');
+  },
+
+  /* -------- endings -------- */
+  retire(a, S) {
+    let bunting = ''; const cols = ['#ff5d73', '#ffd43b', '#4dabf7', '#38d9a9', '#9775fa'];
+    for (let i = 0; i < 15; i++) bunting += Pg(`${i * 25},6 ${i * 25 + 25},6 ${i * 25 + 12.5},26`, cols[i % 5], so(1.5));
+    const r = seeded(5); let conf = ''; for (let i = 0; i < 30; i++) conf += Rc((r() * 360).toFixed(0), (r() * 150 + 30).toFixed(0), 5, 9, cols[i % 5], `transform="rotate(${(r() * 90).toFixed(0)})" class="fall" style="animation-delay:${(r() * 3).toFixed(1)}s;transform-box:fill-box"`);
+    return Rc(0, 0, 360, 220, '#fff3bf') + Ln(0, 6, 360, 6, OL, 2) + bunting
+      + Rc(70, 34, 220, 32, '#ff5d73', so(3) + ' rx="8"') + Tx(180, 56, J('おつかれさまでした!', 'THANK YOU!'), 16, '#ffffff')
+      + conf + person(40, 112, .9, '#748ffc') + person(322, 112, .9, '#63e6be')
+      + a(122, 68, 1.02)
+      + Rc(0, 186, 360, 34, '#e9b872', so(3))
+      + Rc(254, 150, 66, 36, '#ffffff', so(2.5) + ' rx="4"') + Pa('M254,160 q8,6 16,0 q8,6 16,0 q8,6 16,0 q8,6 18,0', 'none', 'stroke="#ff8fab" stroke-width="4"') + [0, 1, 2].map(i => Rc(268 + i * 16, 136, 5, 14, '#4dabf7', so(1.2)) + flame(270.5 + i * 16, 136, .35)).join('');
+  },
+  beach(a, S, o) {
+    const g = uid();
+    return skyGrad(g, '#74c0fc', '#fff3bf') + Rc(0, 0, 360, 220, `url(#${g})`) + sun(300, 46, 22) + cloud(40, 34, .6)
+      + Rc(0, 116, 360, 48, '#339af0') + Pa('M0,128 q15,-6 30,0 t30,0 t30,0 t30,0 t30,0 t30,0 t30,0 t30,0 t30,0 t30,0 t30,0 t30,0', 'none', 'stroke="#d0ebff" stroke-width="3" class="slide"')
+      + Pa('M0,160 Q180,146 360,160 L360,220 L0,220 Z', '#ffe066', so(3))
+      + Pa('M318,200 Q312,140 330,92', 'none', 'stroke="#8d5524" stroke-width="10" stroke-linecap="round"') + Pa('M330,92 Q300,76 280,96 M330,92 Q352,70 360,96 M330,92 Q316,64 296,66 M330,92 Q348,62 360,70', 'none', 'stroke="#2f9e44" stroke-width="9" stroke-linecap="round"')
+      + Pa('M20,120 A56,40 0 0,1 132,120 Z', '#ff5d73', so(2.5)) + Pa('M48,120 A28,40 0 0,1 76,80 A28,40 0 0,1 104,120', 'none', 'stroke="#ffffff" stroke-width="6"') + Ln(76, 120, 76, 196, OL, 3)
+      + a(126, 66, 1.0, 'shades')
+      + Rc(226, 168, 16, 22, '#ffffff', so(2) + ' rx="3"') + Rc(228, 172, 12, 12, '#ff922b') + Pa('M234,168 L246,150 L250,158 Z', '#f06595', so(1.2))
+      + (o.deco === 'money' ? Pa('M40,196 Q30,170 48,160 L64,160 Q82,170 72,196 Z', '#e9b872', so(2.5)) + Tx(56, 188, '¥', 16, '#2f9e44') : '');
+  },
+  rival(a) {
+    let win = ''; for (let r = 0; r < 6; r++) for (let c = 0; c < 4; c++) win += Rc(214 + c * 30, 60 + r * 20, 22, 14, r % 2 ? '#a5d8ff' : '#d0ebff');
+    return Rc(0, 0, 360, 220, '#e7f5ff') + cloud(40, 30, .7) + Rc(200, 10, 144, 182, '#364fc7', so(3)) + win
+      + Rc(224, 22, 96, 26, '#ffd43b', so(2.5) + ' rx="4"') + Tx(272, 41, 'NEW!', 15)
+      + Rc(160, 120, 30, 70, '#212529', so(2)) + Rc(144, 98, 62, 20, '#2f9e44', so(2) + ' rx="3"') + Tx(175, 113, 'EXIT →', 10, '#ffffff')
+      + a(58, 64, 1.0)
+      + Rc(84, 146, 72, 46, '#e0a96d', so(2.5)) + Pg('84,146 70,136 98,136 112,146', '#d4935c', so(2)) + Pa('M120,146 Q110,124 124,112 Q132,126 120,146', '#40c057', so(1.8))
+      + Rc(0, 192, 360, 28, '#adb5bd', so(3));
+  },
+  rocket(a, S) {
+    const g = uid();
+    const ok = S.startupWin;
+    return skyGrad(g, '#1c2a6b', '#91a7ff') + Rc(0, 0, 360, 220, `url(#${g})`) + stars(20, 13, 90)
+      + `<g class="${ok ? 'liftoff' : 'wobble'}" style="transform-origin:270px 120px">
+        ${Pa('M270,20 Q296,50 296,120 L244,120 Q244,50 270,20 Z', '#ffffff', so(3))}${Pa('M270,20 Q282,32 288,48 L252,48 Q258,32 270,20 Z', '#ff5d73', so(2.5))}
+        ${Ci(270, 76, 11, '#4dabf7', so(2.5))}${Pg('244,94 226,128 244,120', '#ff5d73', so(2.5))}${Pg('296,94 314,128 296,120', '#ff5d73', so(2.5))}
+        ${flame(262, 148, 1.2)}</g>`
+      + cloud(214, 176, .9, '#e9ecef') + cloud(280, 180, 1, '#f1f3f5') + Rc(0, 192, 360, 28, '#495057', so(3))
+      + (ok ? Pa('M150,90 A70,70 0 0,1 290,90', 'none', 'stroke="#ff8787" stroke-width="5" opacity=".7"') + Pa('M156,92 A64,64 0 0,1 284,92', 'none', 'stroke="#ffd43b" stroke-width="5" opacity=".7"') + Pa('M162,94 A58,58 0 0,1 278,94', 'none', 'stroke="#69db7c" stroke-width="5" opacity=".7"')
+        : Tx(214, 60, '?', 26, '#ffd43b', 'class="float"') + Tx(326, 80, '?', 22, '#ffd43b', 'class="float"'))
+      + a(36, 66, 1.0);
+  },
+  countryside(a) {
+    const g = uid();
+    let rows = ''; for (let y = 150; y < 220; y += 12) rows += Pa(`M0,${y} Q180,${y - 6} 360,${y}`, 'none', 'stroke="#2f9e44" stroke-width="3" stroke-dasharray="6 6"');
+    return skyGrad(g, '#a5d8ff', '#fff9db') + Rc(0, 0, 360, 220, `url(#${g})`) + sun(54, 44, 18)
+      + Pa('M0,120 L70,70 L130,110 L200,56 L280,108 L360,74 L360,150 L0,150 Z', '#8ce99a', so(2.5)) + Pa('M0,140 Q100,124 200,138 Q280,146 360,132 L360,220 L0,220 Z', '#b2f2bb', so(2.5)) + rows
+      + Rc(262, 104, 70, 46, '#f1f3f5', so(2.5)) + Pg('254,106 297,74 340,106', '#495057', so(2.5)) + Rc(290, 124, 16, 26, '#8d5524', so(2))
+      + a(122, 62, 1.02, 'straw');
+  },
+  backpack(a) {
+    const g = uid();
+    return skyGrad(g, '#ffd8a8', '#a5d8ff') + Rc(0, 0, 360, 220, `url(#${g})`) + cloud(280, 30, .6)
+      + Pg('0,160 80,50 160,160', '#748ffc', so(2.5)) + Pa('M62,74 L80,50 L98,74 L88,70 L80,78 L72,70 Z', '#ffffff', so(1.5)) + Pg('120,160 230,30 340,160', '#5c7cfa', so(2.5)) + Pa('M206,58 L230,30 L254,58 L242,54 L230,64 L218,54 Z', '#ffffff', so(1.5))
+      + Pa('M0,170 Q180,150 360,170 L360,220 L0,220 Z', '#c0eb75', so(3)) + Pa('M180,220 Q200,190 250,176 Q300,166 360,160', 'none', 'stroke="#e9b872" stroke-width="10" stroke-dasharray="14 8"')
+      + Ln(300, 196, 300, 140, '#8d5524', 4) + Pg('300,142 336,142 346,150 336,158 300,158', '#e9b872', so(2)) + Tx(322, 155, '?', 11)
+      + Rc(186, 96, 36, 64, '#e8590c', so(2.5) + ' rx="12"') + Rc(192, 120, 24, 16, '#ff922b', so(2) + ' rx="4"')
+      + a(110, 62, 1.02);
+  },
+  ramen(a) {
+    return Rc(0, 0, 360, 220, '#8d5524') + Rc(30, 8, 300, 58, '#1c3d6e', so(3)) + Ln(130, 30, 130, 66, '#ffffff', 2) + Ln(230, 30, 230, 66, '#ffffff', 2)
+      + Tx(180, 46, J('ラーメン', 'RAMEN'), 24, '#ffffff')
+      + El(330, 110, 16, 22, '#e03131', so(2.5) + ' class="glow"') + Tx(330, 116, J('ら', '麺'), 14, '#ffffff')
+      + a(124, 58, 1.02, 'band')
+      + Rc(-4, 166, 368, 12, '#e8b06a', so(3)) + Rc(0, 178, 360, 42, '#5c3d2e', so(3))
+      + Pa('M40,140 L120,140 Q116,170 80,172 Q44,170 40,140 Z', '#e03131', so(2.5)) + El(80, 140, 40, 8, '#ffe8a3', so(2)) + Ci(68, 139, 6, '#ffffff', so(1.5)) + Pa('M65,139 q3,-3 6,0', 'none', 'stroke="#f06595" stroke-width="2"') + El(92, 139, 7, 5, '#ffd43b', so(1.5)) + steam(70, 126)
+      + Ln(258, 170, 300, 120, '#c68b59', 3) + Ln(266, 172, 306, 124, '#c68b59', 3);
+  },
+  abroad(a) {
+    const g = uid();
+    return skyGrad(g, '#4dabf7', '#e7f5ff') + Rc(0, 0, 360, 220, `url(#${g})`) + cloud(150, 30, .6)
+      + Ci(272, 112, 72, '#4dabf7', so(3)) + Pa('M230,72 Q250,60 262,78 Q270,96 250,104 Q232,100 230,72 Z M276,110 Q300,100 316,118 Q312,150 290,160 Q272,140 276,110 Z M220,130 Q238,128 240,150 Q226,162 216,148 Z', '#69db7c', so(2))
+      + El(272, 112, 72, 26, 'none', 'stroke="#ffffff" stroke-width="1.5" opacity=".6"') + Ln(200, 112, 344, 112, '#ffffff', 1.5, 'opacity=".6"')
+      + El(272, 112, 92, 40, 'none', 'stroke="#ffffff" stroke-width="2.5" stroke-dasharray="7 7"')
+      + `<g class="orbit" style="transform-origin:272px 112px">${Pg('180,112 172,104 196,108 200,100 204,108 216,112 204,116 200,124 196,116 172,120', '#ffffff', so(1.5))}</g>`
+      + Rc(0, 194, 360, 26, '#adb5bd', so(3))
+      + a(32, 64, 1.0) + Rc(136, 154, 32, 40, '#ff922b', so(2.5) + ' rx="5"');
+  },
+  streamer(a) {
+    return Rc(0, 0, 360, 220, '#2b2140') + Ln(0, 12, 360, 12, '#f06595', 4, 'class="glow"') + Ln(0, 18, 360, 18, '#4dabf7', 3, 'class="glow"')
+      + Ci(48, 76, 30, 'none', 'stroke="#fff3bf" stroke-width="10" class="glow"') + Ln(48, 106, 48, 172, '#adb5bd', 3)
+      + Rc(224, 36, 120, 78, OL, so(2) + ' rx="8"') + Rc(231, 43, 106, 64, '#e03131', ' rx="6"') + Pg('274,58 274,92 302,75', '#ffffff')
+      + Tx(284, 136, '1,000,000', 17, '#ffd43b') + Tx(284, 152, '👍 ❤️ 🔔', 12, '#ffffff')
+      + a(108, 56, 1.02, 'headset')
+      + Rc(-4, 170, 368, 12, '#495057', so(3)) + Rc(8, 182, 344, 38, '#343a40', so(3))
+      + Ln(206, 168, 214, 140, '#adb5bd', 3) + El(214, 134, 7, 10, '#495057', so(2));
+  },
+  isekai(a) {
+    const g = uid();
+    return skyGrad(g, '#845ef7', '#ff8cc6') + Rc(0, 0, 360, 220, `url(#${g})`) + stars(18, 41, 80)
+      + Ci(60, 40, 16, '#fff3bf') + Ci(92, 28, 9, '#d0ebff')
+      + Pa('M252,150 L252,80 L262,80 L262,60 L272,46 L282,60 L282,80 L300,80 L300,70 L310,56 L320,70 L320,80 L336,80 L336,150 Z', '#5f3dc4', so(2.5)) + Rc(286, 112, 14, 38, '#ffd43b', so(1.5))
+      + Pa('M226,150 L360,150 L360,220 L240,220 Q220,180 226,150 Z', '#7048e8', so(2.5))
+      + `<g class="float">${Pa('M170,46 Q186,30 200,44 Q214,24 236,34 Q218,40 214,52 Q200,48 196,58 Q190,48 170,46 Z', '#2b2d42')}${Pa('M196,58 q10,6 22,2', 'none', 'stroke="#2b2d42" stroke-width="3"')}</g>`
+      + Pa('M0,170 Q120,160 240,180 L240,220 L0,220 Z', '#8ce99a', so(3)) + [30, 70, 190].map(x => Ci(x, 190, 4, '#ffd43b') + Ci(x + 8, 196, 3, '#ff8fab')).join('')
+      + a(92, 58, 1.05, 'hero');
+  },
+};
+
+/* overlays */
+const DECO = {
+  anger: () => `<g transform="translate(296,58) scale(1.4)"><g class="pulse-soft">${Pa('M-9,-3 Q-3,-3 -3,-9 M3,-9 Q3,-3 9,-3 M9,3 Q3,3 3,9 M-3,9 Q-3,3 -9,3', 'none', 'stroke="#e03131" stroke-width="4" stroke-linecap="round"')}</g></g>`,
+  alert: () => `<g class="blink">${Pg('328,10 308,44 348,44', '#ffd43b', so(2.5))}${Tx(328, 40, '!', 22)}</g>`,
+  money: () => { const r = seeded(77); let s = ''; for (let i = 0; i < 10; i++) s += `<g class="fall" style="animation-delay:${(r() * 3).toFixed(1)}s">${Rc((r() * 340).toFixed(0), (r() * 60).toFixed(0), 22, 12, '#b2f2bb', so(1.5))}</g>`; return s; },
+  sparkle: () => [[40, 40], [320, 30], [300, 150], [60, 160], [180, 20]].map(([x, y], i) => Pg(starPts(x, y, 9), '#fff3bf', so(1.5) + ` class="twinkle" style="animation-delay:${i * .4}s"`)).join(''),
+  sweat: () => cloud(140, 14, .9, '#868e96', 'float') + Pa('M150,40 l-4,10 M168,42 l-4,10 M186,40 l-4,10', 'none', 'stroke="#4dabf7" stroke-width="3" stroke-linecap="round" class="blink"'),
+};
+
+function sceneSVG(key, S, o = {}) {
+  const look = S.look, age = o.age ?? S.age, mood = o.mood ?? moodOf(S);
+  const a = (x, y, s = 1, acc) => `<g transform="translate(${x},${y}) scale(${s})">${avatar(look, { age, mood, acc: acc || o.acc || '' })}</g>`;
+  const fn = SCN[key] || SCN.office;
+  return `<svg class="scene-svg" viewBox="0 0 360 220" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">${fn(a, S, o)}${o.deco && DECO[o.deco] ? DECO[o.deco]() : ''}</svg>`;
+}
+/* ============================ UI ============================ */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
+};
+let L = store.get('sg_lang', ((navigator.language || 'ja').toLowerCase().startsWith('ja') ? 'ja' : 'en'));
+const tt = (o) => o == null ? '' : (typeof o === 'string' ? o : (o[L] ?? o.en ?? o.ja ?? ''));
+const $app = document.getElementById('app');
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const shuffle = (a) => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+let S = null, PLAYER = store.get('sg_name', ''), shownRev = 0;
+
+function fill(s) { return String(s).replace(/\{(\w+)\}/g, (m, k) => (S && S.tok && S.tok[k]) ? tt(S.tok[k]) : (k === 'company' ? tt(CONFIG.company) : m)); }
+const T = (o) => fill(tt(o));
+function tap(el) { return new Promise(res => { const h = (e) => { el.removeEventListener('click', h); res(e); }; el.addEventListener('click', h); }); }
+function screen(html, cls = '') { $app.innerHTML = `<div class="screen ${cls}">${html}</div>`; window.scrollTo(0, 0); return $app.firstElementChild; }
+function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 1900); }
+
+/* ---------- formatting ---------- */
+function money(man) {
+  const v = Math.round(man);
+  if (L === 'ja') {
+    if (Math.abs(v) >= 10000) return (v / 10000).toFixed(Math.abs(v) >= 1000000 ? 0 : 1).replace(/\.0$/, '') + '億円';
+    return v.toLocaleString('ja-JP') + '万円';
+  }
+  const yen = v * 10000;
+  if (Math.abs(yen) >= 1e9) return '¥' + (yen / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
+  if (Math.abs(yen) >= 1e8) return '¥' + Math.round(yen / 1e6) + 'M';
+  if (Math.abs(yen) >= 1e6) return '¥' + (yen / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+  return '¥' + Math.round(yen / 1e3) + 'K';
+}
+function moneyShort(man) {
+  if (L === 'ja') return man >= 10000 ? (man / 10000).toFixed(1).replace(/\.0$/, '') + '億' : Math.round(man) + '万';
+  const y = man * 1e4; return y >= 1e9 ? '¥' + (y / 1e9).toFixed(1).replace(/\.0$/, '') + 'B' : '¥' + Math.round(y / 1e6) + 'M';
+}
+const signed = (v, f = (x) => x) => (v > 0 ? '+' : v < 0 ? '−' : '') + f(Math.abs(v));
+const yearsStr = (n) => L === 'ja' ? `${n}年` : `${n} yr${n === 1 ? '' : 's'}`;
+const ageStr = (a) => L === 'ja' ? `${a}歳` : `age ${a}`;
+const lvName = (i, short) => short ? (L === 'ja' ? LEVELS[i].sj : LEVELS[i].se) : tt(LEVELS[i]);
+const yearLabel = () => L === 'ja' ? `${S.yearIdx + 1}年目 · ${S.age}歳` : `Year ${S.yearIdx + 1} · Age ${S.age}`;
+
+/* ---------- sound ---------- */
+const SFX = {
+  on: store.get('sg_sfx', true), ctx: null,
+  init() { if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { } } if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+  tone(f, d = .1, type = 'sine', v = .07, at = 0) {
+    if (!this.on) return; this.init(); const c = this.ctx; if (!c) return;
+    const t0 = c.currentTime + at, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t0); g.gain.setValueAtTime(v, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+    o.connect(g); g.connect(c.destination); o.start(t0); o.stop(t0 + d + .02);
+  },
+  tick() { this.tone(1200, .03, 'square', .025); },
+  tap() { this.tone(660, .06, 'triangle', .06); },
+  pop() { this.tone(420, .08, 'triangle', .08); this.tone(840, .12, 'triangle', .07, .06); },
+  ok() { [660, 880, 1320].forEach((f, i) => this.tone(f, .14, 'triangle', .07, i * .08)); },
+  ng() { this.tone(260, .18, 'sawtooth', .04); this.tone(196, .3, 'sawtooth', .04, .15); },
+  fan() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => this.tone(f, .16, 'square', .035, i * .1)); },
+  coin() { this.tone(988, .07, 'square', .035); this.tone(1319, .2, 'square', .035, .07); },
+};
+function confetti(n = 70) {
+  const cols = ['#ff5d73', '#ffd43b', '#4dabf7', '#38d9a9', '#9775fa', '#ff922b'];
+  for (let i = 0; i < n; i++) {
+    const d = document.createElement('div'); d.className = 'confetti';
+    d.style.left = Math.random() * 100 + 'vw'; d.style.background = cols[i % cols.length];
+    d.style.animationDuration = (1.8 + Math.random() * 1.8) + 's'; d.style.animationDelay = (Math.random() * .5) + 's';
+    document.body.appendChild(d); setTimeout(() => d.remove(), 4300);
+  }
+}
+
+/* ---------- leaderboard backend ---------- */
+const safeJSON = (s) => { try { return JSON.parse(s); } catch (e) { return null; } };
+function normRun(r) {
+  return { ...r, years: +r.years || 0, revenue: +r.revenue || 0, peak: +r.peak || 0, yearsToPeak: +r.yearsToPeak || 0, happy: +r.happy || 0,
+    player: String(r.player || '?'), look: typeof r.look === 'string' ? safeJSON(r.look) : r.look };
+}
+const LB = {
+  url: () => (CONFIG.leaderboardUrl || '').trim(),
+  local() { return store.get('sg_runs', []); },
+  pending() { return store.get('sg_pending', []); },
+  async submit(run) {
+    const runs = this.local(); runs.push(run); store.set('sg_runs', runs.slice(-300));
+    if (!this.url()) return 'local';
+    const p = this.pending(); p.push(run); store.set('sg_pending', p);
+    return (await this.flush()) ? 'sent' : 'queued';
+  },
+  async post(run) {
+    const body = JSON.stringify(run), headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+    try { const r = await fetch(this.url(), { method: 'POST', body, headers }); if (r.ok) return true; } catch (e) { }
+    try { await fetch(this.url(), { method: 'POST', body, headers, mode: 'no-cors' }); return true; } catch (e) { return false; }
+  },
+  async flush() {
+    const p = this.pending(); if (!p.length || !this.url()) return true;
+    const left = []; for (const run of p) if (!(await this.post(run))) left.push(run);
+    const now = this.pending().filter(r => !p.some(x => x.id === r.id));
+    store.set('sg_pending', left.concat(now));
+    return left.length === 0;
+  },
+  async fetchAll() {
+    const trip = CONFIG.tripId || '';
+    const localRuns = () => this.local().filter(r => (r.trip || '') === trip).map(normRun);
+    if (!this.url()) return { runs: localRuns(), mode: 'local' };
+    try {
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 10000);
+      const r = await fetch(this.url() + (this.url().includes('?') ? '&' : '?') + 'trip=' + encodeURIComponent(trip), { signal: ctrl.signal });
+      clearTimeout(to);
+      const j = await r.json();
+      const runs = (j.runs || []).map(normRun);
+      const ids = new Set(runs.map(x => x.id));
+      for (const p of this.pending()) if (!ids.has(p.id)) runs.push(normRun(p));
+      return { runs, mode: 'online' };
+    } catch (e) { return { runs: localRuns(), mode: 'offline' }; }
+  },
+};
+const BOARDS = [
+  { id: 'tenure', icon: '🕰️', lb: UI.lbTenure, cmp: (a, b) => b.years - a.years || b.revenue - a.revenue, val: r => yearsStr(r.years) },
+  { id: 'revenue', icon: '🏢', lb: UI.lbRevenue, cmp: (a, b) => b.revenue - a.revenue || b.years - a.years, val: r => money(r.revenue) },
+  { id: 'peak', icon: '👑', lb: UI.lbPeak, cmp: (a, b) => b.peak - a.peak || a.yearsToPeak - b.yearsToPeak || b.revenue - a.revenue, val: r => lvName(r.peak, true), sub: r => !r.peak ? '' : L === 'ja' ? `${r.yearsToPeak}${tt(UI.inYear)}` : `${r.yearsToPeak} ${tt(UI.inYear)}` },
+  { id: 'happy', icon: '😊', lb: UI.lbHappy, cmp: (a, b) => b.happy - a.happy || b.years - a.years, val: r => r.happy + 'pt' },
+];
+const pkey = (s) => String(s || '').trim().toLowerCase();
+function rankList(runs, board, best = true) {
+  const s = runs.slice().sort(board.cmp); if (!best) return s;
+  const seen = new Set(); return s.filter(r => { const k = pkey(r.player); if (seen.has(k)) return false; seen.add(k); return true; });
+}
+
+/* ============================ SCREENS ============================ */
+function titleScreen() {
+  S = null;
+  screen(`<div class="topbar"><button class="btn small" id="lang">${L === 'ja' ? 'EN' : '日本語'}</button><button class="btn small" id="snd">${SFX.on ? '🔊' : '🔇'}</button></div>
+    <div class="logo"><div class="sub">${tt(UI.subtitle)}</div><h1 class="${L}">${tt(UI.title)}</h1></div>
+    <div class="machine-wrap">${machineSVG(L === 'ja' ? '新卒ガチャ' : 'GRAD GACHA')}</div>
+    <div class="how"><div class="st"><b>🎰</b>${tt(UI.how1)}</div><div class="ar">▶</div><div class="st"><b>🤔</b>${tt(UI.how2)}</div><div class="ar">▶</div><div class="st"><b>🏆</b>${tt(UI.how3)}</div></div>
+    <button class="btn big primary pulse" id="start">▶ ${tt(UI.start)}</button>
+    <button class="btn yellow" id="lb">🏆 ${tt(UI.ranking)}</button>
+    <div class="company">${esc(tt(CONFIG.company))}</div>`, 'title');
+  $('#lang').onclick = () => { L = L === 'ja' ? 'en' : 'ja'; store.set('sg_lang', L); document.documentElement.lang = L; SFX.tap(); titleScreen(); };
+  $('#snd').onclick = () => { SFX.on = !SFX.on; store.set('sg_sfx', SFX.on); SFX.tap(); titleScreen(); };
+  $('#start').onclick = async () => { SFX.init(); SFX.tap(); if (await askName()) gachaScreen(); };
+  $('#lb').onclick = () => { SFX.tap(); leaderboardScreen(); };
+}
+
+function askName() {
+  return new Promise(res => {
+    const ov = document.createElement('div'); ov.className = 'overlay';
+    ov.innerHTML = `<div class="modal card"><h2>👤 ${tt(UI.yourName)}</h2>
+      <input id="nm" maxlength="14" value="${esc(PLAYER)}" placeholder="${L === 'ja' ? '例:たなか' : 'e.g. Tanaka'}" autocomplete="nickname" enterkeyhint="done">
+      <div class="center muted" style="font-weight:900;font-size:13px">${tt(UI.yourNameSub)}</div>
+      <div class="row"><button class="btn" id="nmx">${tt(UI.back)}</button><button class="btn primary" id="nmok">${tt(UI.ok)}</button></div></div>`;
+    document.body.appendChild(ov);
+    const inp = $('#nm', ov); setTimeout(() => inp.focus(), 60);
+    const done = (v) => { ov.remove(); res(v); };
+    $('#nmok', ov).onclick = () => {
+      const v = inp.value.trim();
+      if (!v) { inp.classList.add('bump'); inp.focus(); setTimeout(() => inp.classList.remove('bump'), 500); return; }
+      PLAYER = v; store.set('sg_name', v); SFX.tap(); done(true);
+    };
+    inp.onkeydown = (e) => { if (e.key === 'Enter') $('#nmok', ov).click(); };
+    $('#nmx', ov).onclick = () => done(false);
+  });
+}
+
+async function gachaScreen() {
+  const grad = rollGrad();
+  const el = screen(`<div class="hint">${tt(UI.tapHandle)}</div><div class="machine-wrap gacha">${machineSVG(L === 'ja' ? '新卒ガチャ' : 'GRAD GACHA')}<div class="tapme" style="left:34%;top:74%">👆</div></div>`, 'gacha');
+  const m = $('.machine', el);
+  await tap(m);
+  $('.tapme', el).remove(); SFX.tap();
+  $('.handle', el).classList.add('turn');
+  for (let i = 0; i < 7; i++) setTimeout(() => SFX.tick(), i * 110);
+  await wait(800);
+  m.classList.add('shaking'); await wait(1000);
+  const rar = RARITIES.find(r => r.id === grad.rarity);
+  const hi = ['SSR', 'UR'].includes(grad.rarity);
+  const ov = document.createElement('div'); ov.className = 'overlay';
+  ov.innerHTML = `<div class="burst" style="background:radial-gradient(circle, ${rar.color} 0%, transparent 62%)"></div>${capsuleSVG(rar.cap[0], rar.cap[1])}`;
+  document.body.appendChild(ov);
+  const cap = $('.capsule', ov); cap.classList.add('drop'); SFX.pop();
+  await wait(750); cap.classList.add('wiggle'); SFX.tick();
+  await wait(hi ? 1500 : 1000);
+  cap.classList.remove('wiggle'); cap.classList.add('open'); $('.burst', ov).classList.add('on');
+  hi ? SFX.fan() : SFX.ok();
+  await wait(480); ov.remove();
+  cardScreen(grad);
+}
+
+const STATCOL = { tech: '#4dabf7', biz: '#38d9a9', comm: '#ff922b', stamina: '#ff5d73', luck: '#69db7c' };
+function rarityBg(id) { return { N: 'linear-gradient(#f8f9fa,#dee2e6)', R: 'linear-gradient(#e7f5ff,#a5d8ff)', SR: 'linear-gradient(#f3f0ff,#b197fc)', SSR: 'linear-gradient(#fff9db,#ffd43b)', UR: 'linear-gradient(135deg,#ffc9c9,#fff3bf,#d3f9d8,#d0ebff,#e5dbff)' }[id]; }
+function raysSVG(color) {
+  let s = ''; for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8; s += `<polygon points="200,200 ${(200 + 400 * Math.cos(a)).toFixed(0)},${(200 + 400 * Math.sin(a)).toFixed(0)} ${(200 + 400 * Math.cos(a + .13)).toFixed(0)},${(200 + 400 * Math.sin(a + .13)).toFixed(0)}" fill="${color}"/>`; }
+  return `<svg class="rays" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">${s}</svg>`;
+}
+function gradChips(g) {
+  const n = NATION[g.nat], mj = MAJORS.find(m => m.id === g.major), ps = PERSONALITIES.find(p => p.id === g.pers), dg = DEGREES.find(d => d.id === g.deg);
+  return `<span class="chip">${flagSVG(g.nat, 15)} ${tt(n)}</span><span class="chip">${g.g === 'm' ? '♂' : '♀'} ${ageStr(g.age)}</span><span class="chip">${mj.icon} ${tt(mj)}・${tt(dg)}</span><span class="chip">${ps.icon} ${tt(ps)}</span>`;
+}
+function cardScreen(g) {
+  const rar = RARITIES.find(r => r.id === g.rarity);
+  const el = screen(`<div class="hint">🎉 ${tt(UI.newGrad)}</div>
+    <div class="card gcard"><div class="rar ${g.rarity}" style="${g.rarity === 'UR' ? '' : 'background:' + rar.color}">${g.rarity}</div>
+      <div class="portrait" style="background:${rarityBg(g.rarity)}">${['SR', 'SSR', 'UR'].includes(g.rarity) ? raysSVG('rgba(255,255,255,.55)') : ''}${avatarSVG(g.look, { age: g.age, mood: 'happy' })}</div>
+      <div class="gname">${esc(tt(g.name))}</div><div class="chips">${gradChips(g)}</div>
+      <div class="stats">${STAT_KEYS.map(k => `<div class="stat"><span class="ic">${ICON[k]}</span><span>${tt(UI[k])}</span><div class="bar"><i style="width:0;background:${STATCOL[k]}" data-w="${g.stats[k]}"></i></div><span class="v">${g.stats[k]}</span></div>`).join('')}</div></div>
+    <button class="btn big primary pulse" id="nx">🎡 ${tt(UI.toWheel)}</button>`, 'card-screen');
+  setTimeout(() => $$('.bar>i', el).forEach(i => { i.style.width = i.dataset.w + '%'; }), 80);
+  if (['SSR', 'UR'].includes(g.rarity)) confetti(60);
+  $('#nx').onclick = () => { SFX.tap(); wheelScreen(g); };
+}
+
+async function wheelScreen(g) {
+  screen(`<div class="hint">🎡 ${tt(UI.wheelTitle)}</div><div class="wheel-wrap">${wheelSVG()}</div><div class="wres" id="wres"></div><button class="btn big primary pulse" id="spin">🎰 ${tt(UI.spin)}</button>`, 'wheel-screen');
+  const btn = $('#spin'); await tap(btn); SFX.tap();
+  btn.disabled = true; btn.classList.remove('pulse'); btn.style.opacity = .5;
+  const n = MODULE_KEYS.length, idx = Math.floor(Math.random() * n), k = MODULE_KEYS[idx];
+  const rot = 360 * 6 + (360 - idx * 360 / n) + (Math.random() - .5) * (300 / n);
+  const w = $('#wheelRot');
+  requestAnimationFrame(() => { w.style.transform = `rotate(${rot}deg)`; });
+  let t = 0; for (let i = 0; i < 26; i++) { t += 40 + i * i * .9; setTimeout(() => SFX.tick(), t); }
+  await wait(3550);
+  SFX.ok();
+  const m = MODULES[k];
+  $('#wres').innerHTML = `<span class="big">${m.icon}</span><span>${tt(m)}</span>${m.majors.includes(g.major) ? `<span class="chip">✨ ${L === 'ja' ? '適性あり' : 'Great fit'}</span>` : ''}`;
+  btn.disabled = false; btn.style.opacity = 1; btn.classList.add('pulse'); btn.innerHTML = '🏢 ' + tt(UI.join);
+  await tap(btn); SFX.tap();
+  buildEventMap(); S = newState(g, k); shownRev = 0;
+  career();
+}
+
+/* ---------- HUD ---------- */
+function meterCol(k, v) { if (k === 'mot') return '#ff922b'; if (k === 'rep') return '#fcc419'; return v < 50 ? '#b197fc' : v < 75 ? '#f783ac' : '#fa5252'; }
+const progPct = () => clamp((S.age - S.age0) / (RETIRE() - S.age0) * 100, 0, 100);
+function hudHTML() {
+  return `<div class="card hud" id="hud">
+    <div class="hh" id="hhead">${headSVG(S.look, { age: S.age, mood: moodOf(S) })}</div>
+    <div class="l1"><span class="nm">${flagSVG(S.nat, 12)} ${esc(tt(S.name))}</span><span class="badge" id="hbadge" style="background:${LEVELS[S.lv].color}">${lvName(S.lv, true)}</span></div>
+    <div class="money"><span>💴 <b id="hsal">${money(S.sal)}</b></span><span>🏢 <b id="hrev">${money(shownRev)}</b></span></div>
+    <div class="meters">${['mot', 'stress', 'rep'].map(k => `<div class="meter" title="${tt(UI[k])}">${ICON[k]}<div class="bar"><i id="m_${k}" style="width:${S[k]}%;background:${meterCol(k, S[k])}"></i></div></div>`).join('')}</div>
+    <div class="prog"><i id="hprog" style="width:${progPct()}%"></i></div></div>`;
+}
+function updateHUD() {
+  if (!$('#hud')) return;
+  $('#hhead').innerHTML = headSVG(S.look, { age: S.age, mood: moodOf(S) });
+  const b = $('#hbadge'); b.textContent = lvName(S.lv, true); b.style.background = LEVELS[S.lv].color;
+  $('#hsal').textContent = money(S.sal);
+  for (const k of ['mot', 'stress', 'rep']) { const i = $('#m_' + k); i.style.width = S[k] + '%'; i.style.background = meterCol(k, S[k]); }
+  $('#hprog').style.width = progPct() + '%';
+  const from = shownRev, to = S.revenue;
+  if (from !== to) {
+    const el = $('#hrev'), t0 = performance.now();
+    const f = (now) => { const u = Math.min(1, (now - t0) / 800); el.textContent = money(from + (to - from) * (1 - Math.pow(1 - u, 3))); if (u < 1) requestAnimationFrame(f); };
+    requestAnimationFrame(f);
+    el.parentElement.classList.add('bump'); setTimeout(() => el.parentElement.classList.remove('bump'), 500);
+    shownRev = to;
+  }
+}
+function tipLine() {
+  if (S.yearIdx === 0) return `<div class="status">${L === 'ja' ? '🔥やる気・⭐評価は高く、😰ストレスは低く!' : 'Keep 🔥 motivation & ⭐ rating high, 😰 stress low!'}</div>`;
+  if (S.yearIdx === 1) return `<div class="status">${L === 'ja' ? '😰が100で燃え尽き… 🎲は成功率' : '😰 at 100 = burnout · 🎲 % = success chance'}</div>`;
+  return '';
+}
+
+/* ---------- year flow ---------- */
+async function career() {
+  while (true) {
+    if (S.yearIdx > 0) S.age++;
+    if (S.age >= RETIRE()) return endingScreen('retire');
+    let ev = pickEvent(S);
+    if (ev === 'quiet') {
+      const ye = endYear(S, '☕');
+      await quietYear(ye);
+      if (ye.end) return endingScreen(ye.end);
+      if (ye.promo) await promoScreen(ye.promo);
+      S.yearIdx++; continue;
+    }
+    let endId = null;
+    while (ev) {
+      rollTokens(S);
+      const { ch, res, deltas } = await eventCard(ev);
+      if (res.promote) res.promoInfo = promote(S, res.promote);
+      if (res.end) { endId = res.end; await outcome(res, deltas, null, 'end'); break; }
+      if (res.next) { await outcome(res, deltas, null, 'next'); ev = EVMAP[res.next]; continue; }
+      const ye = endYear(S, ch.icon);
+      await outcome(res, deltas, ye, ye.end ? 'end' : 'year');
+      if (res.promoInfo) await promoScreen(res.promoInfo);
+      if (ye.end) { endId = ye.end; break; }
+      if (ye.promo) await promoScreen(ye.promo);
+      ev = null;
+    }
+    if (endId) return endingScreen(endId);
+    S.yearIdx++;
+  }
+}
+
+function choiceHTML(c, i) {
+  const p = choiceChance(S, c);
+  let pill = '';
+  if (p === -1) pill = `<span class="chance q">🍀 ?</span>`;
+  else if (p != null) { const ks = Array.isArray(c.check) ? c.check : [c.check]; pill = `<span class="chance ${p >= .65 ? 'hi' : p >= .4 ? 'mid' : 'lo'}">${ks.map(k => ICON[k] || '🎲').join('')} ${Math.round(p * 100)}%</span>`; }
+  else if (c.end) pill = `<span class="chance q">🚪</span>`;
+  return `<button class="choice ${c.end ? 'end' : ''}" data-i="${i}"><span class="ic">${c.icon}</span><span>${esc(T(c.label))}</span>${pill}</button>`;
+}
+async function eventCard(ev) {
+  const el = screen(`${hudHTML()}
+    <div class="scene">${sceneSVG(ev.scene, S, { deco: ev.deco, id: ev.id })}<div class="yr-flag">${yearLabel()}</div><div class="floaters" id="fl"></div></div>
+    <div class="ev-title">${esc(T(ev.title))}</div>${tipLine()}
+    <div class="choices" id="choices">${ev.choices.map(choiceHTML).join('')}</div>`, 'year');
+  const ch = await new Promise(res => $$('.choice', el).forEach(b => { b.onclick = () => res(ev.choices[+b.dataset.i]); }));
+  SFX.tap();
+  $$('.choice', el).forEach(b => { b.disabled = true; if (ev.choices[+b.dataset.i] !== ch) b.style.opacity = .3; });
+  await wait(150);
+  const res = resolveChoice(S, ev, ch);
+  if (res.p != null) await gaugeAnim(res.p, res.roll);
+  else if (ch.mystery) await mysteryAnim();
+  const deltas = applyFx(S, res.fx, res.tag);
+  return { ch, res, deltas };
+}
+async function gaugeAnim(p, roll) {
+  const box = $('#choices');
+  box.innerHTML = `<div class="card gauge-box"><div class="gauge"><div class="zone" style="width:${p * 100}%"></div><div class="needle" id="needle"></div></div><div class="gauge-lbl">🎲 ${Math.round(p * 100)}%</div></div>`;
+  const nd = $('#needle'), target = roll * 100, D = 200 + target, dur = 1150, t0 = performance.now();
+  let lastSeg = -1;
+  await new Promise(res => {
+    const f = (now) => {
+      const u = Math.min(1, (now - t0) / dur), d = D * (1 - Math.pow(1 - u, 2.4));
+      const pos = d <= 100 ? d : d <= 200 ? 200 - d : d - 200;
+      nd.style.left = pos + '%';
+      const seg = Math.floor(d / 12); if (seg !== lastSeg) { lastSeg = seg; SFX.tick(); }
+      if (u < 1) requestAnimationFrame(f); else res();
+    };
+    requestAnimationFrame(f);
+  });
+  await wait(380);
+}
+async function mysteryAnim() {
+  const box = $('#choices'), sy = ['🎟️', '❓', '🍀', '✨'];
+  box.innerHTML = `<div class="card gauge-box"><div style="font-size:56px" id="my">❓</div></div>`;
+  for (let i = 0; i < 12; i++) { $('#my').textContent = sy[i % 4]; SFX.tick(); await wait(70 + i * 14); }
+}
+function deltaChip(d) {
+  const good = d.k === 'stress' ? d.v < 0 : d.v > 0;
+  const val = ['rev', 'sal', 'pay'].includes(d.k) ? signed(d.v, money) : d.k === 'married' ? '' : signed(d.v);
+  return `<span class="d ${good ? 'good' : 'bad'}">${ICON[d.k] || ''} ${val}</span>`;
+}
+function floaters(deltas) {
+  const box = $('#fl'); if (!box) return;
+  deltas.slice(0, 6).forEach((d, i) => {
+    const good = d.k === 'stress' ? d.v < 0 : d.v > 0;
+    const s = document.createElement('span'); s.className = 'fl';
+    s.textContent = `${ICON[d.k] || ''}${['rev', 'sal', 'pay'].includes(d.k) ? signed(d.v, moneyShort) : d.k === 'married' ? '' : signed(d.v)}`;
+    s.style.left = (8 + (i % 3) * 30 + Math.random() * 8) + '%'; s.style.top = (34 + Math.floor(i / 3) * 22) + '%';
+    s.style.color = good ? '#2b8a3e' : '#c92a2a'; s.style.animationDelay = (i * .12) + 's';
+    box.appendChild(s);
+  });
+}
+async function outcome(res, deltas, ye, mode) {
+  updateHUD(); floaters(deltas);
+  if (res.success === true) SFX.ok(); else if (res.success === false) SFX.ng(); else SFX.coin();
+  const resLine = res.success === true ? `<div class="res ok">✔ ${tt(UI.success)}</div>` : res.success === false ? `<div class="res ng">✘ ${tt(UI.fail)}</div>` : '';
+  const txt = res.text ? `<div class="res-txt">${esc(T(res.text))}</div>` : '';
+  const chips = deltas.map(deltaChip).join('');
+  const sum = ye ? `<div class="yr-sum"><span>🏢 ${tt(UI.yearRev)} <b>+${money(ye.rev)}</b></span></div>` : '';
+  const lbl = mode === 'end' ? `🎬 ${tt(UI.toEnding)}` : mode === 'next' ? `▶ ${tt(UI.cont)}` : `▶ ${tt(UI.next)}`;
+  $('#choices').innerHTML = `<div class="card outcome">${resLine}${txt}${chips ? `<div class="deltas">${chips}</div>` : ''}${sum}<button class="btn primary big" id="nx">${lbl}</button></div>`;
+  await tap($('#nx')); SFX.tap();
+}
+async function quietYear(ye) {
+  const picks = shuffle(QUIET).slice(0, 3);
+  const el = screen(`${hudHTML()}
+    <div class="scene">${sceneSVG('office', S, {})}<div class="yr-flag">${yearLabel()}</div></div>
+    <div class="ev-title">☕ ${tt(UI.quiet)}</div>
+    <div class="quiet-grid">${picks.map(q => `<div class="card qc"><b>${q.icon}</b><span class="n" data-n="${ri(q.min, q.max)}">0</span><br><small>${tt(q)}</small></div>`).join('')}</div>
+    <div class="card outcome"><div class="yr-sum" style="border:0;padding:0"><span>🏢 ${tt(UI.yearRev)} <b>+${money(ye.rev)}</b></span></div>
+    <button class="btn primary big" id="nx">${ye.end ? '🎬 ' + tt(UI.toEnding) : '⏩ ' + tt(UI.next)}</button></div>`, 'year');
+  const t0 = performance.now();
+  const f = (now) => { const u = Math.min(1, (now - t0) / 900); $$('.qc .n', el).forEach(n => { n.textContent = Math.round(+n.dataset.n * u).toLocaleString(); }); if (u < 1) requestAnimationFrame(f); };
+  requestAnimationFrame(f);
+  setTimeout(updateHUD, 200); SFX.coin();
+  if (ye.end || ye.promo) await tap($('#nx'));
+  else await Promise.race([tap($('#nx')), wait(2800)]);
+  SFX.tap();
+}
+async function promoScreen(p) {
+  SFX.fan(); confetti(80);
+  const ov = document.createElement('div'); ov.className = 'overlay';
+  ov.innerHTML = `<div class="card promo"><h2>🎉 ${tt(UI.promoted)}</h2>${avatarSVG(S.look, { age: S.age, mood: 'happy', acc: p.to === 7 ? 'crown' : '' })}
+    <div><span class="badge" style="background:${LEVELS[p.from].color}">${lvName(p.from)}</span></div><div class="arrow">⬇</div>
+    <div><span class="badge to" style="background:${LEVELS[p.to].color}">${p.to === 7 ? '👑 ' : ''}${lvName(p.to)}</span></div>
+    <div style="font-weight:900;margin:12px 0">💴 ${money(p.oldSal)} → <b>${money(p.newSal)}</b></div>
+    <button class="btn primary big" id="pok" style="width:100%">OK</button></div>`;
+  document.body.appendChild(ov);
+  await tap($('#pok', ov)); ov.remove(); SFX.tap(); updateHUD();
+}
+
+/* ---------- ending ---------- */
+function niceMax(v) { const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p; return 10 * p; }
+function chartSVG() {
+  const H = S.hist, n = H.length, W = 340, Ht = 150, ml = 46, mb = 20, mt = 10, mr = 6, ph = Ht - mt - mb;
+  const top = niceMax(Math.max(1, ...H.map(h => h.rev))), bw = (W - ml - mr) / n;
+  let s = '';
+  for (let i = 0; i <= 2; i++) { const y = mt + ph * (1 - i / 2); s += `<line x1="${ml}" x2="${W - mr}" y1="${y}" y2="${y}" stroke="#e9ecef" stroke-width="1"/><text x="${ml - 5}" y="${y + 3.5}" font-size="10" text-anchor="end" fill="#6c727f" font-weight="700">${moneyShort(top * i / 2)}</text>`; }
+  H.forEach((h, i) => {
+    const bh = Math.max(1, ph * h.rev / top), x = ml + i * bw + 1, w = Math.max(1.5, bw - 2), y = mt + ph - bh, r = Math.min(4, w / 2, bh);
+    s += `<path d="M${x},${y + bh} L${x},${y + r} Q${x},${y} ${x + r},${y} L${x + w - r},${y} Q${x + w},${y} ${x + w},${y + r} L${x + w},${y + bh} Z" fill="${h.lv === 7 ? '#e8590c' : '#4dabf7'}" class="bar-r" data-i="${i}"/>`;
+  });
+  s += `<line x1="${ml}" x2="${W - mr}" y1="${mt + ph}" y2="${mt + ph}" stroke="#2b2d42" stroke-width="1.5"/>`;
+  const lbl = [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i);
+  lbl.forEach(i => { s += `<text x="${ml + i * bw + bw / 2}" y="${Ht - 5}" font-size="10" text-anchor="middle" fill="#6c727f" font-weight="700">${ageStr(H[i].age)}</text>`; });
+  H.forEach((h, i) => { s += `<rect class="hit" data-i="${i}" x="${ml + i * bw}" y="0" width="${bw}" height="${Ht}" fill="transparent"/>`; });
+  return `<svg viewBox="0 0 ${W} ${Ht}" id="chartsvg">${s}</svg>`;
+}
+function bindChart() {
+  const box = $('#chart'); if (!box) return;
+  const tip = $('#tip'), svg = $('#chartsvg'), H = S.hist, n = H.length, W = 340, ml = 46, mr = 6, bw = (W - ml - mr) / n;
+  const show = (e) => {
+    const r = svg.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width * W;
+    const i = clamp(Math.floor((x - ml) / bw), 0, n - 1), h = H[i];
+    $$('.bar-r', svg).forEach(b => b.style.opacity = +b.dataset.i === i ? 1 : .45);
+    tip.style.display = 'block'; tip.style.left = ((ml + i * bw + bw / 2) / W * r.width) + 'px'; tip.style.top = '34px';
+    tip.innerHTML = `${ageStr(h.age)} · ${lvName(h.lv, true)}<br>🏢 ${money(h.rev)} ${h.icon}`;
+  };
+  const hide = () => { tip.style.display = 'none'; $$('.bar-r', svg).forEach(b => b.style.opacity = 1); };
+  svg.addEventListener('pointerdown', show); svg.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' || e.buttons) show(e); });
+  svg.addEventListener('pointerleave', hide); svg.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse') setTimeout(hide, 1400); });
+}
+function stripHTML(endId) {
+  const H = S.hist;
+  return H.map((h, i) => `<div class="yc ${i > 0 && h.lv > H[i - 1].lv ? 'promo-y' : ''}">${h.age}<b>${h.icon}</b>${i > 0 && h.lv > H[i - 1].lv ? '⬆' : '&nbsp;'}</div>`).join('')
+    + `<div class="yc promo-y">${S.age}<b>${ENDINGS[endId].icon}</b>🏁</div>`;
+}
+async function endingScreen(endId) {
+  const E = ENDINGS[endId];
+  if (endId === 'startup') S.startupWin = rnd() < 0.25 + S.luck / 400;
+  const v = (endId === 'startup' && !S.startupWin) ? E.alt : E;
+  const title = T(v.title), sub = T(v.sub);
+  const acc = endId === 'retire' ? (S.peak === 7 ? 'crown bouquet' : 'bouquet') : '';
+  const run = makeRun(S, endId, PLAYER);
+  const el = screen(`<div class="scene end-hero">${sceneSVG(E.scene, S, { mood: 'happy', acc, deco: endId === 'lottery' ? 'money' : null })}</div>
+    <div class="end-title">${E.icon} ${esc(title)}</div><div class="end-sub">${esc(sub)}</div>
+    <div class="who">${flagSVG(S.nat, 15)} ${esc(tt(S.name))} · ${ageStr(S.age)}</div>
+    <div class="tiles">
+      <div class="card tile"><div class="ic">🕰️</div><div class="lb">${tt(UI.tenure)}</div><div class="val">${yearsStr(run.years)}</div><div class="rk" id="rk_tenure"></div></div>
+      <div class="card tile"><div class="ic">🏢</div><div class="lb">${tt(UI.revenue)}</div><div class="val">${money(run.revenue)}</div><div class="rk" id="rk_revenue"></div></div>
+      <div class="card tile"><div class="ic">👑</div><div class="lb">${tt(UI.peak)}</div><div class="val" style="font-size:18px"><span class="badge" style="background:${LEVELS[run.peak].color};font-size:15px">${lvName(run.peak, true)}</span></div><div class="rk" id="rk_peak"></div></div>
+      <div class="card tile"><div class="ic">😊</div><div class="lb">${tt(UI.happy)}</div><div class="val">${run.happy}pt</div><div class="rk" id="rk_happy"></div></div>
+      <div class="card tile wide"><div class="lb">👛 ${tt(UI.lifetime)}</div><div class="val">${money(S.lifetime)}</div></div>
+    </div>
+    ${S.hist.length ? `<div class="card sect"><h3>📈 ${tt(UI.career)}</h3><div class="chart" id="chart">${chartSVG()}<div class="tip" id="tip"></div></div></div>
+    <div class="card sect"><h3>🧭 ${tt(UI.lifeline)}</h3><div class="strip">${stripHTML(endId)}</div></div>` : ''}
+    <div class="status" id="sendst">⏳ ${tt(UI.loading)}</div>
+    <button class="btn big primary pulse" id="again">🎰 ${tt(UI.again)}</button>
+    <div class="row"><button class="btn yellow" id="lb">🏆 ${tt(UI.ranking)}</button><button class="btn" id="share">📤 ${tt(UI.share)}</button></div>
+    <button class="btn small" id="home" style="align-self:center">🏠 ${tt(UI.home)}</button>`, 'ending');
+  SFX.fan(); if (E.good) confetti(90);
+  bindChart();
+  $('#again').onclick = () => { SFX.tap(); gachaScreen(); };
+  $('#lb').onclick = () => { SFX.tap(); leaderboardScreen(run.id); };
+  $('#home').onclick = () => { SFX.tap(); titleScreen(); };
+  $('#share').onclick = () => {
+    const text = L === 'ja'
+      ? `【新卒ガチャ】${tt(S.name)}(${tt(NATION[S.nat])})は${yearsStr(run.years)}在籍、売上貢献${money(run.revenue)}、最高役職は${lvName(run.peak)}。結末:${title}${E.icon}`
+      : `[Shinsotsu Gacha] ${tt(S.name)} (${tt(NATION[S.nat])}) stayed ${yearsStr(run.years)}, brought in ${money(run.revenue)}, peaked as ${lvName(run.peak)}. Ending: ${title} ${E.icon}`;
+    if (navigator.share) navigator.share({ title: tt(UI.title), text, url: location.href }).catch(() => { });
+    else if (navigator.clipboard) navigator.clipboard.writeText(text + ' ' + location.href).then(() => toast(tt(UI.copied)), () => { });
+  };
+  const st = await LB.submit(run);
+  const data = await LB.fetchAll();
+  if (!$('#sendst')) return;
+  $('#sendst').textContent = st === 'sent' ? '✅ ' + tt(UI.sent) : st === 'queued' ? '📴 ' + tt(UI.offline) : '📱 ' + tt(UI.localOnly);
+  for (const b of BOARDS) {
+    const list = rankList(data.runs, b, true), i = list.findIndex(r => pkey(r.player) === pkey(PLAYER));
+    const elr = $('#rk_' + b.id); if (!elr || i < 0) continue;
+    elr.innerHTML = `${i < 3 ? ['🥇', '🥈', '🥉'][i] : '🏅'} #${i + 1}/${list.length}${list[i].id === run.id ? ' 🆕' : ''}`;
+  }
+}
+
+/* ---------- leaderboard screen ---------- */
+async function leaderboardScreen(hl) {
+  let tab = store.get('sg_tab', 'tenure'), data = { runs: [], mode: 'local' };
+  screen(`<div class="lb-head"><button class="btn small" id="bk">◀ ${tt(UI.back)}</button><h2>🏆</h2><button class="btn small" id="rf">🔄 ${tt(UI.refresh)}</button></div>
+    <div class="tabs">${BOARDS.map(b => `<button class="tab ${b.id === tab ? 'on' : ''}" data-t="${b.id}"><b>${b.icon}</b>${tt(b.lb)}</button>`).join('')}</div>
+    <label class="toggle"><input type="checkbox" id="best" checked> ${tt(UI.bestOnly)}</label>
+    <div class="status" id="st">⏳ ${tt(UI.loading)}</div><div class="lb-list" id="list"></div>`, 'lb');
+  const draw = () => {
+    const b = BOARDS.find(x => x.id === tab) || BOARDS[0];
+    const list = rankList(data.runs, b, $('#best').checked).slice(0, 50);
+    $('#list').innerHTML = list.length ? list.map((r, i) => {
+      let head = '<svg class="head"></svg>';
+      try { if (r.look && r.look.skin) head = headSVG(r.look, { age: r.look.age || 30, mood: 'happy' }); } catch (e) { }
+      return `<div class="card lbi ${r.id === hl ? 'me' : ''} ${i === 0 ? 'top1' : ''}" style="animation-delay:${Math.min(i, 12) * .03}s">
+        <div class="rk">${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</div>${head}
+        <div style="min-width:0"><div class="pn">${esc(r.player)}</div><div class="gn">${NATION[r.nat] ? flagSVG(r.nat, 10) : ''} ${esc(L === 'ja' ? (r.gradJa || '') : (r.gradEn || ''))} ${(ENDINGS[r.ending] || {}).icon || ''}</div></div>
+        <div class="vv">${b.val(r)}${b.sub ? `<div class="gn" style="justify-content:flex-end">${b.sub(r)}</div>` : ''}</div></div>`;
+    }).join('') : `<div class="card empty">${tt(UI.noRuns)}</div>`;
+  };
+  const load = async () => {
+    $('#st').textContent = '⏳ ' + tt(UI.loading);
+    data = await LB.fetchAll();
+    $('#st').textContent = data.mode === 'online' ? `🌐 ${tt(UI.online)} · ${data.runs.length}` : data.mode === 'local' ? `📱 ${tt(UI.localOnly)}` : `📴 ${tt(UI.offline)}`;
+    draw();
+  };
+  $$('.tab').forEach(t => t.onclick = () => { tab = t.dataset.t; store.set('sg_tab', tab); $$('.tab').forEach(x => x.classList.toggle('on', x === t)); SFX.tap(); draw(); });
+  $('#best').onchange = draw;
+  $('#bk').onclick = () => { SFX.tap(); titleScreen(); };
+  $('#rf').onclick = () => { SFX.tap(); load(); };
+  load();
+}
+
+/* ---------- boot ---------- */
+document.documentElement.lang = L;
+buildEventMap();
+LB.flush();
+titleScreen();
+</script>
+</body>
+</html>
