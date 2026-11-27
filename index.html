@@ -21,6 +21,14 @@ const CONFIG = {
 
   retireAge: 65,
 
+  // How often each nationality is rolled (relative weights).
+  // JP Japan, KR Korea, CN China, TH Thailand, AR Argentina, PH Philippines
+  nationalityWeights: { JP: 80, KR: 4, CN: 4, TH: 4, AR: 4, PH: 4 },
+
+  // Team roulette odds (relative weights). The wheel looks fair… it isn't. 😉
+  // FIN Financials, SCM Supply Chain, HCM, DEV Tech/Dev, OCI Cloud, SALES Presales
+  teamWeights: { FIN: 50, SCM: 10, HCM: 10, DEV: 10, OCI: 10, SALES: 10 },
+
   company: { ja: '本中コンサルティング', en: 'Motonaka Consulting' },
 
   // First one is HQ. Others appear in "transfer" events.
@@ -163,7 +171,8 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appeara
 .hud .hh{grid-row:span 2;display:flex}
 .hud .head{width:54px;height:54px;border:2.5px solid var(--ink);border-radius:14px;background:#e7f5ff;display:block}
 .hud .l1{display:flex;align-items:center;justify-content:space-between;gap:6px;font-weight:900;font-size:14px;min-width:0}
-.hud .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
+.hud .l1 .badge{flex-shrink:0}
 .badge{display:inline-block;border:2.5px solid var(--ink);border-radius:999px;padding:1px 8px;font-weight:900;font-size:12px;white-space:nowrap;background:#fff}
 .money{display:flex;gap:12px;font-weight:900;font-size:13px;white-space:nowrap}
 .money b{font-variant-numeric:tabular-nums}
@@ -182,10 +191,11 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appeara
 .fl{position:absolute;font-weight:900;font-size:22px;-webkit-text-stroke:1px #fff;paint-order:stroke fill;animation:floatUp 1.6s ease-out forwards;white-space:nowrap}
 .ev-title{font-size:22px;font-weight:900;text-align:center;line-height:1.3;padding:0 4px;animation:popIn .35s ease}
 .choices{display:grid;gap:10px}
-.choice{display:grid;grid-template-columns:44px 1fr auto;align-items:center;text-align:left;gap:8px;border:3px solid var(--ink);border-radius:18px;background:#fff;padding:10px 12px;font-weight:900;font-size:18px;box-shadow:0 5px 0 var(--ink);transition:transform .06s,box-shadow .06s;animation:slideUp .35s cubic-bezier(.3,1.3,.6,1) backwards}
+.choice{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;text-align:left;gap:8px;border:3px solid var(--ink);border-radius:18px;background:#fff;padding:10px 12px;font-weight:900;font-size:18px;box-shadow:0 5px 0 var(--ink);transition:transform .06s,box-shadow .06s;animation:slideUp .35s cubic-bezier(.3,1.3,.6,1) backwards}
 .choice:nth-child(2){animation-delay:.06s}.choice:nth-child(3){animation-delay:.12s}
 .choice:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
 .choice .ic{font-size:32px;text-align:center}
+.choice>span:nth-child(2){overflow-wrap:anywhere;line-height:1.25}
 .chance{font-size:14px;font-weight:900;border:2.5px solid var(--ink);border-radius:999px;padding:2px 8px;white-space:nowrap}
 .chance.hi{background:#b2f2bb}.chance.mid{background:#ffec99}.chance.lo{background:#ffc9c9}.chance.q{background:#e5dbff}
 .choice.end{background:#fff0f6}
@@ -241,6 +251,16 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appeara
 .yc{flex:0 0 auto;width:44px;text-align:center;font-weight:900;font-size:11px;border:2px solid var(--ink);border-radius:10px;padding:3px 0;background:#fff}
 .yc b{display:block;font-size:20px}
 .yc.promo-y{background:#fff3bf}
+.yc.away{background:#e9ecef;border-style:dashed}
+.review{display:flex;align-items:center;gap:14px;border-top:2.5px dashed #ced4da;padding-top:10px;justify-content:center}
+.stamp{flex:0 0 auto;width:58px;height:58px;border-radius:50%;border:4px solid #e03131;color:#e03131;font-size:34px;font-weight:900;display:flex;align-items:center;justify-content:center;transform:rotate(-12deg);background:#fff5f5;animation:stamp .45s cubic-bezier(.3,1.6,.6,1) .15s backwards}
+.stamp.gS{border-color:#f59f00;color:#f59f00;background:#fff9db;box-shadow:0 0 0 4px #ffe066}
+.stamp.gC,.stamp.gD{border-color:#868e96;color:#868e96;background:#f1f3f5}
+.rv{display:grid;gap:2px;font-weight:900;font-size:14px;min-width:0}
+.rv-h{font-size:12px;color:var(--muted)}
+.later{text-align:center;font-weight:900;font-size:16px;color:var(--muted)}
+.screen.boomer .deltas{margin:4px 0}
+.spin-fast{animation:spin 1.1s linear infinite}
 
 /* leaderboard */
 .lb-head{display:flex;align-items:center;justify-content:space-between}
@@ -255,7 +275,7 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appeara
 .lbi .head{width:44px;height:44px;border:2px solid var(--ink);border-radius:12px;background:#e7f5ff}
 .lbi .pn{font-weight:900;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lbi .gn{font-size:12px;font-weight:900;color:var(--muted);display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden}
-.lbi .vv{font-weight:900;font-size:17px;text-align:right;font-variant-numeric:tabular-nums}
+.lbi .vv{font-weight:900;font-size:17px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .lbi.me{background:#fff3bf}
 .lbi.top1{background:#fff9db}
 .toggle{display:flex;align-items:center;gap:6px;font-weight:900;font-size:13px}
@@ -317,6 +337,7 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appeara
 @keyframes fly{0%,100%{transform:translate(0,0)}50%{transform:translate(-30px,6px)}}
 @keyframes shakeSoft{0%,100%{transform:rotate(0)}25%{transform:rotate(-1.5deg)}75%{transform:rotate(1.5deg)}}
 @keyframes pulseSoft{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+@keyframes stamp{0%{opacity:0;transform:rotate(-12deg) scale(2.2)}100%{opacity:1;transform:rotate(-12deg) scale(1)}}
 @keyframes confetti{to{transform:translateY(110vh) rotate(720deg)}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important}}
 </style>
@@ -332,19 +353,19 @@ const LEVELS = [
   { ja: 'コンサルタント', en: 'Consultant', sj: 'コンサルタント', se: 'Consultant', sal: 540, rev: 1800, yrs: 2, rep: 60, slot: 1, color: '#4dabf7' },
   { ja: 'シニアコンサルタント', en: 'Senior Consultant', sj: 'シニアコンサル', se: 'Sr. Consultant', sal: 680, rev: 2600, yrs: 3, rep: 68, slot: 0.8, color: '#38d9a9' },
   { ja: 'マネージャー', en: 'Manager', sj: 'マネージャー', se: 'Manager', sal: 900, rev: 4000, yrs: 4, rep: 76, slot: 0.5, color: '#fcc419' },
-  { ja: 'シニアマネージャー', en: 'Senior Manager', sj: 'シニアマネージャー', se: 'Sr. Manager', sal: 1150, rev: 6000, yrs: 4, rep: 84, slot: 0.3, color: '#ff922b' },
-  { ja: 'ディレクター', en: 'Director', sj: 'ディレクター', se: 'Director', sal: 1450, rev: 8500, yrs: 5, rep: 90, slot: 0.2, color: '#f06595' },
+  { ja: 'シニアマネージャー', en: 'Senior Manager', sj: 'シニアマネージャー', se: 'Sr. Manager', sal: 1150, rev: 6000, yrs: 5, rep: 86, slot: 0.25, color: '#ff922b' },
+  { ja: 'ディレクター', en: 'Director', sj: 'ディレクター', se: 'Director', sal: 1450, rev: 8500, yrs: 6, rep: 92, slot: 0.15, color: '#f06595' },
   { ja: 'パートナー', en: 'Partner', sj: 'パートナー', se: 'Partner', sal: 2000, rev: 12000, yrs: 99, rep: 999, slot: 1, color: '#9775fa' },
   { ja: '社長', en: 'CEO', sj: '社長', se: 'CEO', sal: 3200, rev: 18000, yrs: 99, rep: 999, slot: 1, color: '#e8590c' },
 ];
 
 const MODULES = {
-  FIN:   { icon: '💹', ja: '会計', en: 'Financials',   w: { tech: .25, biz: .55, comm: .20 }, majors: ['acct', 'econ', 'math'], color: '#4dabf7' },
-  SCM:   { icon: '🚚', ja: 'SCM',  en: 'Supply Chain', w: { tech: .30, biz: .50, comm: .20 }, majors: ['mech', 'econ'], color: '#38d9a9' },
-  HCM:   { icon: '👥', ja: '人事', en: 'HCM',          w: { tech: .20, biz: .35, comm: .45 }, majors: ['psych', 'law', 'lit'], color: '#f783ac' },
-  DEV:   { icon: '🛠️', ja: '開発', en: 'Tech / Dev',   w: { tech: .70, biz: .10, comm: .20 }, majors: ['cs', 'math'], color: '#9775fa' },
-  OCI:   { icon: '☁️', ja: 'クラウド', en: 'Cloud / OCI', w: { tech: .75, biz: .05, comm: .20 }, majors: ['cs', 'mech'], color: '#74c0fc' },
-  SALES: { icon: '🤝', ja: '営業', en: 'Presales',     w: { tech: .15, biz: .30, comm: .55 }, majors: ['intl', 'sports', 'lit', 'phil'], color: '#ffa94d' },
+  FIN:   { icon: '💹', ja: '会計', en: 'Financials', wj: '会計', we: 'Finance',   w: { tech: .25, biz: .55, comm: .20 }, majors: ['acct', 'econ', 'math'], color: '#4dabf7' },
+  SCM:   { icon: '🚚', ja: 'SCM',  en: 'Supply Chain', wj: 'SCM', we: 'SCM', w: { tech: .30, biz: .50, comm: .20 }, majors: ['mech', 'econ'], color: '#38d9a9' },
+  HCM:   { icon: '👥', ja: '人事', en: 'HCM', wj: '人事', we: 'HCM',          w: { tech: .20, biz: .35, comm: .45 }, majors: ['psych', 'law', 'lit'], color: '#f783ac' },
+  DEV:   { icon: '🛠️', ja: '開発', en: 'Tech / Dev', wj: '開発', we: 'Dev',   w: { tech: .70, biz: .10, comm: .20 }, majors: ['cs', 'math'], color: '#9775fa' },
+  OCI:   { icon: '☁️', ja: 'クラウド', en: 'Cloud / OCI', wj: 'クラウド', we: 'Cloud', w: { tech: .75, biz: .05, comm: .20 }, majors: ['cs', 'mech'], color: '#74c0fc' },
+  SALES: { icon: '🤝', ja: '営業', en: 'Presales', wj: '営業', we: 'Sales',     w: { tech: .15, biz: .30, comm: .55 }, majors: ['intl', 'sports', 'lit', 'phil'], color: '#ffa94d' },
 };
 const MODULE_KEYS = Object.keys(MODULES);
 
@@ -390,6 +411,7 @@ const SKINS = {
   sa:  ['#c98d60', '#a86f45', '#8d5a37'],
   eu:  ['#fde4d3', '#f6d5c0', '#efc4a8'],
   mix: ['#fbe0c8', '#f1c9a5', '#e0ac84', '#c68a5c', '#8d5a37', '#5e3a22'],
+  ar:  ['#fde4d3', '#f6d5c0', '#efc4a8', '#e0ac84', '#c68a5c'],
 };
 const HAIRS = {
   dark: ['#1d1b22', '#2a211b', '#33251c'],
@@ -407,32 +429,16 @@ const NATIONS = [
     fam: N('Sato:佐藤,Suzuki:鈴木,Takahashi:高橋,Tanaka:田中,Ito:伊藤,Watanabe:渡辺,Yamamoto:山本,Nakamura:中村,Kobayashi:小林,Kato:加藤,Yoshida:吉田,Yamada:山田,Sasaki:佐々木,Matsumoto:松本,Inoue:井上,Kimura:木村,Hayashi:林,Shimizu:清水,Mori:森,Ikeda:池田'),
     m: N('Shota:翔太,Daiki:大輝,Takumi:拓海,Ren:蓮,Yuto:悠斗,Kenta:健太,Riku:陸,Sota:颯太,Minato:湊,Yamato:大和,Haruto:陽翔,Kaito:海斗'),
     f: N('Hina:陽菜,Yui:結衣,Misaki:美咲,Sakura:さくら,Aoi:葵,Rin:凛,Nanami:七海,Riko:莉子,Mei:芽依,Kaede:楓,Mio:澪,Yuna:優奈') },
+  { code: 'KR', ja: '韓国', en: 'Korea', w: 5, skin: 'ea', hair: 'dark', style: 'ff',
+    fam: N('Kim:キム,Lee:イ,Park:パク,Choi:チェ,Jung:チョン,Kang:カン,Yoon:ユン'), m: N('Minjun:ミンジュン,Jihoon:ジフン,Seojun:ソジュン,Dohyun:ドヒョン'), f: N('Seoyeon:ソヨン,Jiwoo:ジウ,Hayoon:ハユン,Minji:ミンジ') },
   { code: 'CN', ja: '中国', en: 'China', w: 5, skin: 'ea', hair: 'dark', style: 'cn',
-    fam: N('Wang:王,Li:李,Zhang:張,Liu:劉,Chen:陳,Yang:楊'), m: N('Wei:偉,Hao:浩,Jie:傑,Lei:磊'), f: N('Jing:静,Ting:婷,Xue:雪,Yan:燕') },
-  { code: 'KR', ja: '韓国', en: 'Korea', w: 3, skin: 'ea', hair: 'dark', style: 'ff',
-    fam: N('Kim:キム,Lee:イ,Park:パク,Choi:チェ,Jung:チョン'), m: N('Minjun:ミンジュン,Jihoon:ジフン,Seojun:ソジュン'), f: N('Seoyeon:ソヨン,Jiwoo:ジウ,Hayoon:ハユン') },
-  { code: 'VN', ja: 'ベトナム', en: 'Vietnam', w: 3, skin: 'sea', hair: 'dark', style: 'ff',
-    fam: N('Nguyen:グエン,Tran:チャン,Le:レ,Pham:ファム'), m: N('Minh:ミン,Duc:ドゥック,Huy:フイ'), f: N('Linh:リン,Lan:ラン,Mai:マイ') },
-  { code: 'IN', ja: 'インド', en: 'India', w: 2, skin: 'sa', hair: 'dark', style: 'gf',
-    fam: N('Sharma:シャルマ,Patel:パテル,Kumar:クマール,Reddy:レッディ'), m: N('Arjun:アルジュン,Rahul:ラフル,Vikram:ヴィクラム'), f: N('Priya:プリヤ,Ananya:アナニャ,Divya:ディヴィヤ') },
-  { code: 'PH', ja: 'フィリピン', en: 'Philippines', w: 1.5, skin: 'sea', hair: 'dark', style: 'gf',
-    fam: N('Santos:サントス,Reyes:レイエス,Cruz:クルーズ'), m: N('Mark:マーク,Paolo:パオロ,John:ジョン'), f: N('Maria:マリア,Angel:エンジェル,Joy:ジョイ') },
-  { code: 'US', ja: 'アメリカ', en: 'USA', w: 1.2, skin: 'mix', hair: 'mix', style: 'gf',
-    fam: N('Smith:スミス,Johnson:ジョンソン,Brown:ブラウン,Miller:ミラー'), m: N('James:ジェームズ,Ethan:イーサン,Michael:マイケル'), f: N('Emily:エミリー,Olivia:オリビア,Sarah:サラ') },
-  { code: 'ID', ja: 'インドネシア', en: 'Indonesia', w: 1, skin: 'sea', hair: 'dark', style: 'gf',
-    fam: N('Wijaya:ウィジャヤ,Santoso:サントソ,Pratama:プラタマ'), m: N('Budi:ブディ,Adi:アディ'), f: N('Sari:サリ,Putri:プトリ') },
-  { code: 'BR', ja: 'ブラジル', en: 'Brazil', w: .8, skin: 'mix', hair: 'mix', style: 'gf', nikkei: .35,
-    fam: N('Silva:シルバ,Oliveira:オリヴェイラ,Santos:サントス'), m: N('Pedro:ペドロ,Gabriel:ガブリエル'), f: N('Ana:アナ,Julia:ジュリア') },
-  { code: 'NP', ja: 'ネパール', en: 'Nepal', w: .8, skin: 'sa', hair: 'dark', style: 'gf',
-    fam: N('Gurung:グルン,Thapa:タパ,Shrestha:シュレスタ'), m: N('Bikash:ビカシュ,Suman:スマン'), f: N('Sita:シタ,Anjali:アンジャリ') },
-  { code: 'TH', ja: 'タイ', en: 'Thailand', w: .7, skin: 'sea', hair: 'dark', style: 'gf',
-    fam: N('Srisuk:シースック,Chaiyaporn:チャイヤポーン'), m: N('Somchai:ソムチャイ,Narong:ナロン'), f: N('Malee:マリー,Ploy:プロイ') },
-  { code: 'GB', ja: 'イギリス', en: 'UK', w: .4, skin: 'eu', hair: 'eu', style: 'gf',
-    fam: N('Taylor:テイラー,Wilson:ウィルソン'), m: N('Oliver:オリバー,Harry:ハリー'), f: N('Amelia:アメリア,Grace:グレース') },
-  { code: 'FR', ja: 'フランス', en: 'France', w: .3, skin: 'eu', hair: 'eu', style: 'gf',
-    fam: N('Martin:マルタン,Dubois:デュボワ'), m: N('Lucas:リュカ,Hugo:ユーゴ'), f: N('Camille:カミーユ,Chloé:クロエ') },
-  { code: 'DE', ja: 'ドイツ', en: 'Germany', w: .3, skin: 'eu', hair: 'eu', style: 'gf',
-    fam: N('Müller:ミュラー,Schmidt:シュミット'), m: N('Lukas:ルーカス,Felix:フェリックス'), f: N('Hannah:ハンナ,Lena:レーナ') },
+    fam: N('Wang:王,Li:李,Zhang:張,Liu:劉,Chen:陳,Yang:楊,Zhao:趙'), m: N('Wei:偉,Hao:浩,Jie:傑,Lei:磊,Yu:宇'), f: N('Jing:静,Ting:婷,Xue:雪,Yan:燕,Min:敏') },
+  { code: 'TH', ja: 'タイ', en: 'Thailand', w: 4, skin: 'sea', hair: 'dark', style: 'gf',
+    fam: N('Srisuk:シースック,Chaiyaporn:チャイヤポーン,Wongsa:ウォンサー,Suksawat:スックサワット'), m: N('Somchai:ソムチャイ,Narong:ナロン,Krit:クリット,Anan:アナン'), f: N('Malee:マリー,Ploy:プロイ,Nok:ノック,Fah:ファー') },
+  { code: 'AR', ja: 'アルゼンチン', en: 'Argentina', w: 3, skin: 'ar', hair: 'eu', style: 'gf', nikkei: .2,
+    fam: N('González:ゴンサレス,Rodríguez:ロドリゲス,Fernández:フェルナンデス,López:ロペス,Martínez:マルティネス,Pérez:ペレス'), m: N('Santiago:サンティアゴ,Mateo:マテオ,Martín:マルティン,Tomás:トマス'), f: N('Sofía:ソフィア,Valentina:バレンティナ,Camila:カミラ,Martina:マルティナ') },
+  { code: 'PH', ja: 'フィリピン', en: 'Philippines', w: 3, skin: 'sea', hair: 'dark', style: 'gf',
+    fam: N('Santos:サントス,Reyes:レイエス,Cruz:クルーズ,Bautista:バウティスタ,Garcia:ガルシア'), m: N('Mark:マーク,Paolo:パオロ,John:ジョン,Miguel:ミゲル'), f: N('Maria:マリア,Angel:エンジェル,Joy:ジョイ,Bea:ビア') },
 ];
 const NATION = Object.fromEntries(NATIONS.map(n => [n.code, n]));
 
@@ -531,7 +537,17 @@ const UI = {
   lbRevenue: { ja: '売上貢献', en: 'Revenue' },
   lbPeak: { ja: '最高役職', en: 'Title' },
   lbHappy: { ja: '幸福度', en: 'Happiness' },
-  inYear: { ja: '年目で到達', en: 'yrs to reach' },
+  inYear: { ja: '年目で到達', en: 'in {n} yrs' },
+  h1: { ja: '上期', en: 'H1' },
+  h2: { ja: '下期', en: 'H2' },
+  review: { ja: '年度評価', en: 'Annual review' },
+  bonus: { ja: '賞与', en: 'Bonus' },
+  yearsLater: { ja: '{n}年後…', en: '{n} years later…' },
+  boomer: { ja: '出戻り入社!', en: 'Boomerang hire!' },
+  boomerStartup: { ja: '起業は撤退…', en: 'The startup folded…' },
+  boomerPoached: { ja: '転職先が合わなかった…', en: "The new job wasn't a fit…" },
+  welcome: { ja: 'おかえり!', en: 'WELCOME BACK!' },
+  away: { ja: '社外', en: 'Away' },
 };
 
 const ICON = { tech: '💻', biz: '📊', comm: '💬', stamina: '💪', luck: '🍀', mot: '🔥', stress: '😰', rep: '⭐', rev: '🏢', sal: '💴', pay: '👛', kids: '👶', married: '💍' };
@@ -580,7 +596,7 @@ const EVENTS = [
     C('🙅', '丁重に断る', 'Politely decline', { mot: 5, rep: -3 }),
     K('🎤', 'カラオケまで', 'Karaoke too!', 'luck', { rep: 12, mot: 10 }, { rep: -5, stress: 5 }, t('十八番が炸裂!', 'Nailed the song!'), t('音痴がバレた', 'Off-key…')),
   ] },
-  { id: 'headhunt', scene: 'phone', minT: 2, cool: 3, weight: S => S.mot < 35 ? 3 : S.mot < 50 ? 1.4 : .7, title: t('ヘッドハンターから電話', 'A headhunter calls'), choices: [
+  { id: 'headhunt', scene: 'phone', minT: 4, cool: 4, weight: S => S.mot < 35 ? 3 : S.mot < 50 ? 1.4 : .7, title: t('ヘッドハンターから電話', 'A headhunter calls'), choices: [
     C('💼', '{rival}へ転職', 'Join {rival}', {}, { end: 'poached' }),
     K('💰', '昇給交渉に使う', 'Use it to negotiate', 'comm', { sal: 60, mot: 8 }, { rep: -12, mot: -5 }, t('昇給ゲット!', 'Got a raise!'), t('上司が不機嫌に…', 'Boss is not amused…')),
     C('📵', '断る', 'Decline', { rep: 2, mot: 2 }),
@@ -636,7 +652,7 @@ const EVENTS = [
     C('🏝️', '会社を辞める', 'Quit the company', {}, { end: 'lottery' }),
     C('💼', '働き続ける', 'Keep working', { mot: 40, stress: -30 }, { text: t('働く億万長者', 'The working millionaire') }),
   ] },
-  { id: 'startup', scene: 'cafe', minAge: 26, maxAge: 50, minT: 3, cool: 6, title: t('友人から起業の誘い', "A friend's startup offer"), choices: [
+  { id: 'startup', scene: 'cafe', minAge: 28, maxAge: 50, minT: 6, cool: 8, weight: .7, title: t('友人から起業の誘い', "A friend's startup offer"), choices: [
     C('🚀', '参加する', 'Join them', {}, { end: 'startup' }),
     K('💡', '社内新規事業にする', 'Pitch it internally', 'biz', { rev: 1000, rep: 10 }, { rep: -5 }),
     C('🙅', '断る', 'Decline', { mot: -2 }),
@@ -662,7 +678,7 @@ const EVENTS = [
     C('🧳', '行く', 'Go', { rep: 8, stress: 5, comm: 4, mot: 3 }),
     C('❌', '断る', 'Refuse', { rep: -8, mot: 4 }),
   ] },
-  { id: 'stream', scene: 'home', maxAge: 50, minT: 1, once: true, title: t('副業で動画配信?', 'Start a video channel?'), choices: [
+  { id: 'stream', scene: 'home', maxAge: 50, minT: 3, once: true, weight: .7, title: t('副業で動画配信?', 'Start a video channel?'), choices: [
     { icon: '📹', label: t('始める', 'Start'), mystery: true,
       run: S => rnd() < 0.04 + S.luck / 1200 ? { success: true, next: 'streamhit' } : { success: false, fx: { mot: 6, stress: 3 }, text: t('登録者12人', '12 subscribers') } },
     C('🙅', 'やめとく', 'Nah', {}),
@@ -721,11 +737,11 @@ const EVENTS = [
     C('📱', 'バスでゲーム', 'Play a game on the bus', { mot: 8, luck: 3 }, { text: t('新卒ガチャにハマった', 'Hooked on Shinsotsu Gacha') }),
     C('💻', 'PCで仕事', 'Work on the laptop', { rev: 200, mot: -8, rep: 2 }),
   ] },
-  { id: 'early', scene: 'office', minAge: 50, once: true, weight: 1.5, title: t('早期退職の募集', 'Early retirement program'), choices: [
+  { id: 'early', scene: 'office', minAge: 55, once: true, weight: 1.2, title: t('早期退職の募集', 'Early retirement program'), choices: [
     C('💰', '応募する', 'Apply', {}, { end: 'earlyRetire' }),
     C('🪑', '残る', 'Stay', { mot: -2 }),
   ] },
-  { id: 'abroad', scene: 'airport', once: true, maxAge: 55, weight: .8, cond: S => S.married, title: t('パートナーが海外赴任に', 'Your partner is moving abroad'), choices: [
+  { id: 'abroad', scene: 'airport', once: true, minT: 5, maxAge: 55, weight: .5, cond: S => S.married, title: t('パートナーが海外赴任に', 'Your partner is moving abroad'), choices: [
     C('✈️', '一緒に行く', 'Go with them', {}, { end: 'abroad' }),
     K('🌐', '海外拠点への異動を探す', 'Find an overseas transfer', 'comm', { mot: 10, rev: 500, comm: 5 }, { mot: -12, stress: 8 }, t('海外拠点へ異動!', 'Transferred overseas!'), t('空きポストなし…', 'No openings…')),
     C('💻', '遠距離で頑張る', 'Try long-distance', { mot: -10, stress: 8 }),
@@ -763,6 +779,119 @@ const EVENTS = [
     C('💳', '全部おごる', 'Treat everyone', { mot: 6, rep: 6, stress: -4, pay: -15 }),
     C('🧾', '割り勘', 'Split the bill', { mot: 3 }),
   ] },
+  /* ---------- accounting / ERP life ---------- */
+  { id: 'close', scene: 'night', cool: 3, title: t('月次決算が締まらない', "Month-end close won't close"), choices: [
+    K('🔍', '仕訳を総点検', 'Check every journal', 'biz', { rep: 10, biz: 3 }, { stress: 12, rep: -4 }, t('原因発見!', 'Found it!'), t('見つからない…', 'Still missing…')),
+    K('🤖', '自動照合を組む', 'Build auto-matching', 'tech', { rep: 8, rev: 600, tech: 3 }, { stress: 10 }),
+    C('🍕', 'チームにピザ', 'Pizza for the team', { mot: 8, stress: -4, pay: -2 }),
+  ] },
+  { id: 'oneyen', scene: 'office', cool: 5, title: t('試算表が1円合わない', 'Trial balance is off by ¥1'), choices: [
+    C('🔦', '徹夜で探す', 'Hunt all night', { stress: 14, rep: 6, biz: 3 }, { tag: 'night', text: t('端数処理だった', 'It was a rounding rule') }),
+    C('🪙', '自腹で1円入れる', 'Pay the ¥1 yourself', { mot: 3, rep: -6 }, { text: t('会計はそういう物ではない', "That's not how accounting works") }),
+    K('📊', '差異分析する', 'Variance analysis', 'biz', { rep: 10 }, { stress: 6 }),
+  ] },
+  { id: 'einvoice', scene: 'meeting', minT: 1, cool: 6, title: t('インボイス・電帳法の相談が殺到', 'Flood of e-invoice law requests'), choices: [
+    C('📚', '法令を読み込む', 'Study the law', { biz: 6, stress: 6 }),
+    K('📦', '提案パッケージ化', 'Package it as a service', 'biz', { rev: 2000, rep: 10 }, { rep: -5 }, t('受注殺到!', 'Orders pouring in!'), t('売れなかった', 'Nobody bought it')),
+    C('🙈', '後回し', 'Deal with it later', { stress: -3, rep: -4 }),
+  ] },
+  { id: 'audit', scene: 'meeting', minT: 1, cool: 4, title: t('監査法人からの質問攻め', 'Barrage of auditor questions'), choices: [
+    K('📑', '証跡を即提出', 'Hand over evidence', 'biz', { rep: 10 }, { rep: -6, stress: 8 }, t('一発OK!', 'Cleared at once!'), t('証跡が足りない…', 'Evidence missing…')),
+    C('🙇', '持ち帰って検討', '"Let me get back to you"', { rep: -3, stress: -3 }),
+    K('☕', '雑談で和ませる', 'Small talk first', 'comm', { rep: 6, mot: 4 }, { rep: -4 }),
+  ] },
+  { id: 'march', scene: 'night', cool: 4, title: t('3月決算の繁忙期', 'March year-end crunch'), choices: [
+    C('💪', '全力で乗り切る', 'Go all-in', { stress: 15, rep: 10, rev: 500 }, { tag: 'night' }),
+    K('📅', 'タスクを再配分', 'Rebalance the tasks', 'comm', { rep: 6, stress: -4 }, { stress: 8 }),
+    C('🌸', '花見は譲れない', 'Hanami comes first', { mot: 12, stress: -8, rep: -6 }),
+  ] },
+  { id: 'scope', scene: 'meeting', minT: 1, cool: 4, deco: 'anger', title: t('要件が二転三転', 'Requirements keep changing'), choices: [
+    K('📝', '変更管理を徹底', 'Enforce change control', 'biz', { rep: 8, stress: -3 }, { rep: -6, stress: 6 }),
+    C('😇', '全部受ける', 'Accept everything', { rep: 8, stress: 16 }),
+    K('💴', '追加見積もりを出す', 'Send a change order', 'comm', { rev: 1200, rep: 2 }, { rep: -8 }, t('承認された!', 'Approved!'), t('値切られた', 'Haggled down')),
+  ] },
+  { id: 'fitgap', scene: 'meeting', minT: 1, cool: 4, title: t('Fit&Gap:標準機能で足りない', 'Fit & Gap: the standard falls short'), choices: [
+    K('🧩', '標準で押し通す', 'Push the standard', 'comm', { rep: 8 }, { rep: -6 }),
+    C('🛠️', 'アドオン開発', 'Build an add-on', { rev: 900, stress: 10, tech: 4 }),
+    K('🔄', '業務を変えてもらう', 'Change their process', 'biz', { rep: 12, rev: 300 }, { rep: -8, stress: 6 }),
+  ] },
+  { id: 'excelclient', scene: 'meeting', cool: 5, title: t('顧客「Excelでよくない?」', 'Client: "Why not just Excel?"'), choices: [
+    K('🏛️', 'ERPの価値を説く', 'Preach the value of ERP', 'biz', { rep: 10, rev: 400 }, { mot: -5 }),
+    C('📥', 'Excel連携を作る', 'Build an Excel upload', { rev: 600, tech: 3, stress: 5 }),
+    C('🙂', '笑顔でうなずく', 'Smile and nod', { stress: -2 }),
+  ] },
+  { id: 'coa', scene: 'office', cool: 6, title: t('勘定科目が3000個ある', 'The client has 3,000 GL accounts'), choices: [
+    K('🧹', '整理を提案', 'Propose a cleanup', 'biz', { rep: 10, rev: 800 }, { rep: -4 }),
+    C('✍️', '全部マッピング', 'Map every single one', { stress: 14, rep: 6, biz: 4 }, { tag: 'night' }),
+  ] },
+  { id: 'rounding', scene: 'meeting', cool: 8, title: t('消費税の端数処理で大論争', 'The great tax-rounding debate'), choices: [
+    C('⬇️', '切り捨て派', 'Team round-down', { mot: 3 }, { text: t('経理部が味方に', 'Accounting is on your side') }),
+    C('⬆️', '切り上げ派', 'Team round-up', { mot: -2, rep: -2 }, { text: t('顧客が渋い顔', 'The client frowns') }),
+    K('⚖️', '四捨五入で和解', 'Compromise: round half up', 'comm', { rep: 8 }, { stress: 5 }),
+  ] },
+  { id: 'relnotes', scene: 'office', minT: 1, cool: 4, title: t('リリースノートが500ページ', '500 pages of release notes'), choices: [
+    C('📖', '全部読む', 'Read it all', { tech: 5, biz: 4, stress: 8 }),
+    K('🤖', 'AIに要約させる', 'Have AI summarize it', 'tech', { tech: 3, mot: 5 }, { rep: -6 }, t('完璧な要約', 'Perfect summary'), t('AIが話を盛った', 'The AI made things up')),
+    C('🙈', '読まない', 'Skip it', { stress: -3 }),
+  ] },
+  { id: 'study', scene: 'classroom', minLv: 1, cool: 4, title: t('社内勉強会の講師を頼まれた', 'Asked to teach a study session'), choices: [
+    K('🎤', '引き受ける', 'Accept', 'comm', { rep: 10, comm: 4 }, { rep: -3, stress: 6 }, t('大好評!', 'Huge hit!'), t('全員寝た', 'Everyone fell asleep')),
+    C('🙅', '忙しいので断る', 'Too busy', { rep: -2 }),
+  ] },
+  { id: 'hanko', scene: 'office', cool: 6, title: t('承認にハンコが7個必要', 'One approval, seven hanko stamps'), choices: [
+    K('📲', '電子承認を提案', 'Propose e-approval', 'biz', { rep: 10, rev: 500 }, { rep: -4 }, t('ペーパーレス化!', 'Paperless at last!'), t('「前例がない」', '"There is no precedent"')),
+    C('🔴', '黙って集める', 'Collect the stamps', { stress: 6, comm: 3 }),
+  ] },
+  { id: 'hogan', scene: 'office', cool: 6, title: t('設計書がExcel方眼紙', 'Design docs on "Excel graph paper"'), choices: [
+    C('😑', '受け入れる', 'Accept your fate', { stress: 5 }),
+    K('📝', 'ツール移行を提案', 'Propose a proper tool', 'tech', { rep: 8, mot: 5 }, { rep: -4 }),
+    C('🖨️', '印刷して製本', 'Print and bind it', { rep: 4, mot: -4 }, { text: t('紙が600枚…', '600 sheets of paper…') }),
+  ] },
+  { id: 'onsite', scene: 'train', minT: 1, cool: 6, title: t('客先常駐の打診', 'Asked to work on-site at the client'), choices: [
+    C('🏢', '常駐する', 'Go on-site', { rev: 1000, comm: 5, stress: 8 }),
+    C('🏠', 'リモートで支援', 'Support remotely', { mot: 4, rep: -3 }),
+  ] },
+  { id: 'aiagent', scene: 'server', minT: 3, cool: 6, title: t('AIエージェントで決算自動化', 'Automate the close with AI agents'), choices: [
+    K('🤖', 'PoCをやる', 'Run a PoC', 'tech', { rev: 1500, rep: 10, tech: 4 }, { rep: -5, stress: 8 }, t('経理部が感動!', 'Accounting is amazed!'), t('仕訳が暴走', 'Journals went haywire')),
+    C('🧑‍💼', '人手で十分', 'Humans are fine', { mot: -2 }),
+  ] },
+  /* ---------- office life ---------- */
+  { id: 'peerpromo', scene: 'office', minT: 2, cool: 6, title: t('同期が先に昇進した', 'Your peer got promoted first'), choices: [
+    C('😤', '絶対追いつく', "I'll catch up", { mot: 6, stress: 8, rep: 4 }),
+    C('🎉', '心から祝う', 'Celebrate for real', { mot: 4, comm: 3 }),
+    C('🍶', 'やけ酒', 'Drown your sorrows', { stress: -6, stamina: -4 }),
+  ] },
+  { id: 'nenmatsu', scene: 'office', cool: 5, title: t('年末調整の書類', 'Year-end tax adjustment forms'), choices: [
+    C('✅', '即提出', 'Submit right away', { rep: 2, mot: 2 }),
+    K('😱', '締切を忘れてた', 'Forgot the deadline', 'luck', { mot: 2 }, { rep: -5, stress: 5 }, t('ギリギリ間に合った', 'Made it just in time'), t('人事に怒られた', 'HR is not happy')),
+  ] },
+  { id: 'sportsday', scene: 'golf', cool: 5, title: t('社内運動会', 'Company sports day'), choices: [
+    K('🏃', 'リレーのアンカー', 'Anchor the relay', 'stamina', { rep: 8, mot: 10 }, { mot: -4, stamina: -3 }, t('ごぼう抜き!', 'Overtook everyone!'), t('派手に転んだ', 'Tripped spectacularly')),
+    C('📣', '応援団長', 'Head cheerleader', { comm: 5, mot: 6 }),
+    C('🍱', '弁当係', 'Bento duty', { mot: 3, stress: -3 }),
+  ] },
+  { id: 'furusato', scene: 'home', minT: 2, cool: 5, title: t('ふるさと納税の返礼品', 'Hometown tax gift: pick one'), choices: [
+    C('🦀', 'カニ', 'Crab', { mot: 6 }),
+    C('🥩', '和牛', 'Wagyu', { mot: 6, stamina: 2 }),
+    C('🍚', 'お米1年分', "A year's rice", { mot: 4, stress: -4 }),
+  ] },
+  { id: 'chair', scene: 'clinic', minAge: 30, cool: 6, title: t('デスクワークで腰が限界', 'Your back hates your desk job'), choices: [
+    C('🪑', '高級チェアを買う', 'Buy a fancy chair', { stamina: 8, pay: -20 }),
+    C('🧘', '毎日ストレッチ', 'Stretch every day', { stamina: 5, stress: -3 }),
+    C('😬', '我慢する', 'Endure it', { stamina: -6 }),
+  ] },
+  { id: 'thanks', scene: 'stage', deco: 'sparkle', minT: 2, cool: 5, cond: S => S.rep >= 55, title: t('顧客から感謝状が届いた', 'A thank-you letter from the client'), choices: [
+    C('🖼️', '額に入れて飾る', 'Frame it', { mot: 10, rep: 4 }),
+    C('📣', 'チームに共有', 'Share it with the team', { mot: 6, rep: 6, comm: 3 }),
+  ] },
+  { id: 'snow', scene: 'city', cool: 8, title: t('大雪で電車が止まった', 'Heavy snow stopped the trains'), choices: [
+    C('🏠', '在宅勤務', 'Work from home', { mot: 4, stress: -3 }),
+    K('🚶', '2時間歩いて出社', 'Walk 2 hours to work', 'stamina', { rep: 6 }, { stamina: -5, stress: 6 }, t('伝説になった', 'You became a legend'), t('遭難しかけた', 'Nearly got lost')),
+  ] },
+  { id: 'wedspeech', scene: 'wedding', minLv: 2, cool: 6, title: t('部下の結婚式でスピーチ', "Speech at your junior's wedding"), choices: [
+    K('🥹', '感動系', 'Go for tears', 'comm', { rep: 6, mot: 8 }, { mot: -3 }, t('会場が号泣', 'Not a dry eye in the room'), t('長すぎた', 'Way too long')),
+    K('😂', '笑い系', 'Go for laughs', 'luck', { rep: 6, mot: 8 }, { rep: -4 }, t('爆笑!', 'Roaring laughter!'), t('すべった', 'Fell flat')),
+  ] },
 ];
 /* ============================ ENGINE ============================ */
 let rnd = () => Math.random();
@@ -781,7 +910,8 @@ function buildEventMap() { EVMAP = {}; ALL_EVENTS().forEach(e => { EVMAP[e.id] =
 
 /* ---------- roll a new grad ---------- */
 function rollGrad() {
-  const nat = wpick(NATIONS, n => n.w);
+  const nw = CONFIG.nationalityWeights || {};
+  const nat = wpick(NATIONS, n => nw[n.code] ?? n.w);
   const g = rnd() < 0.58 ? 'm' : 'f';
   const deg = wpick(DEGREES, d => d.w);
   let age = pick(deg.ages);
@@ -817,6 +947,12 @@ function rollGrad() {
 const KATA = { Sato: 'サトウ', Suzuki: 'スズキ', Takahashi: 'タカハシ', Tanaka: 'タナカ', Ito: 'イトウ', Watanabe: 'ワタナベ', Yamamoto: 'ヤマモト', Nakamura: 'ナカムラ', Kobayashi: 'コバヤシ', Kato: 'カトウ', Yoshida: 'ヨシダ', Yamada: 'ヤマダ', Sasaki: 'ササキ', Matsumoto: 'マツモト', Inoue: 'イノウエ', Kimura: 'キムラ', Hayashi: 'ハヤシ', Shimizu: 'シミズ', Mori: 'モリ', Ikeda: 'イケダ' };
 const katakanaOf = (s) => KATA[s] || s;
 
+/* team roulette (weighted, see CONFIG.teamWeights) */
+function rollModule() {
+  const tw = CONFIG.teamWeights || {};
+  return wpick(MODULE_KEYS, k => Math.max(0, tw[k] ?? 1));
+}
+
 /* ---------- new career state ---------- */
 function newState(grad, module) {
   const pers = PERSONALITIES.find(p => p.id === grad.pers);
@@ -850,9 +986,9 @@ function eventOk(S, e) {
   return true;
 }
 function pickEvent(S) {
-  if (S.yearIdx === 0) return EVMAP.training;
-  if (S.yearIdx >= 2 && !S.used.magic && rnd() < 0.0015) return EVMAP.magic;
-  if (S.yearIdx >= 2 && S.stress < 70 && rnd() < 0.22) return 'quiet';
+  if (S.yearIdx === 0 && !S.half) return EVMAP.training;
+  if (S.yearIdx >= 2 && !S.used.magic && rnd() < 0.0008) return EVMAP.magic;
+  if (S.yearIdx >= 2 && S.stress < 70 && rnd() < 0.16) return 'quiet';
   const pool = Object.values(EVMAP).filter(e => eventOk(S, e));
   if (!pool.length) return 'quiet';
   return wpick(pool, e => typeof e.weight === 'function' ? e.weight(S) : (e.weight ?? 1));
@@ -902,10 +1038,14 @@ function resolveChoice(S, ev, ch) {
 
 /* apply effects, return actual deltas */
 const METERS = ['mot', 'stress', 'rep'];
+/* two event cards per year → each card's meter/skill effects are scaled down */
+const FX_SCALE = { mot: .65, stress: .65, rep: .6, tech: .6, biz: .6, comm: .6, stamina: .6, luck: .6 };
+const scaleFx = (k, v) => FX_SCALE[k] ? (Math.sign(v) * Math.max(1, Math.round(Math.abs(v) * FX_SCALE[k]))) : v;
 function applyFx(S, fx, tag) {
   const out = [];
   for (let [k, v] of Object.entries(fx || {})) {
     if (!v) continue;
+    v = scaleFx(k, v);
     if (k === 'stress' && v > 0) v = Math.round(v * S.stressMul * (tag === 'night' ? S.night : 1));
     if (k === 'rep' && v > 0) v = Math.round(v * S.repMul);
     if (METERS.includes(k) || STAT_KEYS.includes(k)) {
@@ -952,12 +1092,14 @@ function endYear(S, icon) {
   S.mot = clamp(S.mot + (55 - S.mot) * 0.12 - (S.pers === 'ambitious' && S.yrsLv >= 5 ? 4 : 0), 0, 100);
   if (S.age >= 40) S.stamina = clamp(S.stamina - (S.age >= 55 ? 2 : 1), 0, 99);
   S.sal = Math.round(S.sal + Math.max(0, LEVELS[S.lv].sal * 0.015 + (S.rep - 50) / 6));
-  S.lifetime += S.sal;
+  const grade = perf >= .33 ? 'S' : perf >= .13 ? 'A' : perf >= -.07 ? 'B' : perf >= -.27 ? 'C' : 'D';
+  const bonus = Math.round(S.sal * { S: .45, A: .33, B: .22, C: .12, D: .04 }[grade]);
+  S.lifetime += S.sal + bonus;
   S.happySum += S.mot;
   S.done += 1; S.yrsLv += 1;
   S.hist.push({ age: S.age, lv: S.lv, rev: S.yearRev, sal: S.sal, mot: Math.round(S.mot), icon: icon || '📅' });
 
-  const res = { rev: S.yearRev, sal: S.sal, drift: { mot: S.mot - before.mot, stress: S.stress - before.stress, rep: S.rep - before.rep }, promo: null, end: null };
+  const res = { rev: S.yearRev, sal: S.sal, grade, bonus, drift: { mot: S.mot - before.mot, stress: S.stress - before.stress, rep: S.rep - before.rep }, promo: null, end: null };
   if (S.stress >= 100) res.end = 'burnout';
   else if (S.mot <= 0) res.end = 'quit';
   else if (S.rep <= 0) res.end = 'letgo';
@@ -972,10 +1114,27 @@ function endYear(S, icon) {
   return res;
 }
 
+/* ---------- boomerang re-hire (出戻り): a failed startup or a bad new job brings them back once ---------- */
+function tryBoomerang(S, endId) {
+  if (S.boomer) return null;
+  if (endId === 'startup') { S.startupWin = rnd() < 0.28 + S.luck / 400; if (S.startupWin) return null; }
+  else if (endId === 'poached') { if (rnd() >= 0.4) return null; }
+  else return null;
+  const yrs = ri(1, 3);
+  S.boomer = { kind: endId, yrs, from: S.age, tok: { ...S.tok } };
+  S.hist.push({ age: S.age, lv: S.lv, rev: 0, sal: 0, mot: Math.round(S.mot), icon: '🪃', away: true });
+  S.age += yrs - 1;            // the next year's age++ completes the time away
+  S.rep = 45; S.yrsLv = 0;
+  S.mot = clamp(S.mot + 15, 0, 100); S.stress = clamp(S.stress - 25, 0, 100);
+  if (endId === 'startup') { S.biz = clamp(S.biz + 8, 0, 99); S.comm = clamp(S.comm + 5, 0, 99); }
+  else { S.tech = clamp(S.tech + 6, 0, 99); S.biz = clamp(S.biz + 4, 0, 99); }
+  delete S.startupWin;
+  return S.boomer;
+}
+
 /* ---------- final record ---------- */
 function happyScore(S) {
-  const n = S.hist.length;
-  const avg = n ? S.happySum / n : S.mot;
+  const avg = S.done ? S.happySum / S.done : S.mot;
   return Math.round(avg * Math.min(1, S.done / 10));
 }
 function uuid() { return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
@@ -999,6 +1158,14 @@ const Pa = (d, f, o = '') => `<path d="${d}" fill="${f}" ${o}/>`;
 const Pg = (pts, f, o = '') => `<polygon points="${pts}" fill="${f}" ${o}/>`;
 const Ln = (x1, y1, x2, y2, c = OL, w = 2.5, o = '') => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${w}" stroke-linecap="round" ${o}/>`;
 const Tx = (x, y, s, size = 14, f = OL, o = '') => `<text x="${x}" y="${y}" font-size="${size}" fill="${f}" text-anchor="middle" font-weight="900" ${o}>${s}</text>`;
+const TxF = (x, y, s, size, f, maxw, o = '') => Tx(x, y, s, size, f, `data-fit="${maxw}" ${o}`);
+/* shrink any <text data-fit="maxWidth"> that would overflow (fonts differ between devices) */
+function fitTexts(root = document) {
+  root.querySelectorAll('text[data-fit]').forEach(t => {
+    const max = +t.dataset.fit; t.removeAttribute('textLength'); t.removeAttribute('lengthAdjust');
+    try { if (t.getComputedTextLength() > max) { t.setAttribute('textLength', max); t.setAttribute('lengthAdjust', 'spacingAndGlyphs'); } } catch (e) { }
+  });
+}
 let _uid = 0; const uid = () => 'g' + (++_uid);
 
 function starPts(cx, cy, r, ir = 0.42, n = 5, rot = -90) {
@@ -1147,6 +1314,7 @@ const FLAGS = {
   GB: () => Rc(0, 0, 36, 24, '#012169') + Ln(0, 0, 36, 24, '#fff', 4.8, 'stroke-linecap="butt"') + Ln(36, 0, 0, 24, '#fff', 4.8, 'stroke-linecap="butt"') + Ln(0, 0, 36, 24, '#c8102e', 1.6, 'stroke-linecap="butt"') + Ln(36, 0, 0, 24, '#c8102e', 1.6, 'stroke-linecap="butt"') + Rc(15, 0, 6, 24, '#fff') + Rc(0, 9, 36, 6, '#fff') + Rc(16.2, 0, 3.6, 24, '#c8102e') + Rc(0, 10.2, 36, 3.6, '#c8102e'),
   FR: () => Rc(0, 0, 12, 24, '#0055a4') + Rc(12, 0, 12, 24, '#fff') + Rc(24, 0, 12, 24, '#ef4135'),
   DE: () => Rc(0, 0, 36, 8, '#000') + Rc(0, 8, 36, 8, '#dd0000') + Rc(0, 16, 36, 8, '#ffce00'),
+  AR: () => Rc(0, 0, 36, 8, '#74acdf') + Rc(0, 8, 36, 8, '#fff') + Rc(0, 16, 36, 8, '#74acdf') + Star(18, 12, 3.8, '#f6b40e', 'stroke="#85340a" stroke-width=".3"', 16) + Ci(18, 12, 2, '#f6b40e', 'stroke="#85340a" stroke-width=".3"'),
   BR: () => Rc(0, 0, 36, 24, '#009c3b') + Pg('18,2.5 33,12 18,21.5 3,12', '#ffdf00') + Ci(18, 12, 5.4, '#002776') + Pa('M12.8,11 Q18,9.2 23.2,12.8', 'none', 'stroke="#fff" stroke-width="1.1"'),
 };
 function flagSVG(code, h = 18) {
@@ -1173,7 +1341,7 @@ function machineSVG(label) {
   ${Pa('M64,92 Q72,58 104,46', 'none', 'stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".8"')}
   ${Rc(34, 182, 172, 132, '#ff5d73', so(3) + ' rx="20"')}
   ${Rc(46, 194, 148, 34, '#ffffff', so(2.5) + ' rx="10"')}
-  ${Tx(120, 218, label, label.length > 8 ? 15 : 19, OL)}
+  ${TxF(120, 218, label, label.length > 8 ? 16 : 19, OL, 134)}
   ${Rc(56, 244, 10, 26, OL, ' rx="4"')}
   <g class="handle" style="transform-origin:110px 268px">${Ci(110, 268, 26, '#ffd43b', so(3))}${Rc(92, 262, 36, 12, '#ffffff', so(2.5) + ' rx="6"')}${Ci(110, 268, 4, OL)}</g>
   ${Rc(150, 266, 42, 32, OL, ' rx="8"')}${Rc(155, 271, 32, 12, '#495057', ' rx="4"')}
@@ -1194,10 +1362,11 @@ function wheelSVG() {
   let seg = '';
   MODULE_KEYS.forEach((k, i) => {
     const m = MODULES[k], a0 = i * 360 / n - 180 / n, a1 = a0 + 360 / n;
-    const [x0, y0] = pt(a0, r), [x1, y1] = pt(a1, r), [tx, ty] = pt(i * 360 / n, r * .66), [lx, ly] = pt(i * 360 / n, r * .36);
+    const ang = i * 360 / n, [x0, y0] = pt(a0, r), [x1, y1] = pt(a1, r), [tx, ty] = pt(ang, r * .5), [lx, ly] = pt(ang, r * .8);
+    const lbl = L === 'ja' ? m.wj : m.we;
     seg += `<g class="seg" data-k="${k}">${Pa(`M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 0,1 ${x1.toFixed(1)},${y1.toFixed(1)} Z`, m.color, so(3))}
-      <text x="${tx.toFixed(1)}" y="${(ty + 11).toFixed(1)}" font-size="32" text-anchor="middle" transform="rotate(${i * 360 / n} ${tx.toFixed(1)} ${ty.toFixed(1)})">${m.icon}</text>
-      <text x="${lx.toFixed(1)}" y="${(ly + 5).toFixed(1)}" font-size="13" font-weight="900" fill="${OL}" text-anchor="middle" transform="rotate(${i * 360 / n} ${lx.toFixed(1)} ${ly.toFixed(1)})">${tt(m).slice(0, 8)}</text></g>`;
+      <text x="${tx.toFixed(1)}" y="${(ty + 10).toFixed(1)}" font-size="30" text-anchor="middle" transform="rotate(${ang} ${tx.toFixed(1)} ${ty.toFixed(1)})">${m.icon}</text>
+      <text x="${lx.toFixed(1)}" y="${(ly + 5.5).toFixed(1)}" font-size="16" font-weight="900" fill="${OL}" text-anchor="middle" data-fit="82" transform="rotate(${ang} ${lx.toFixed(1)} ${ly.toFixed(1)})">${lbl}</text></g>`;
   });
   let dots = '';
   for (let i = 0; i < 24; i++) { const [x, y] = pt(i * 15, 141); dots += Ci(x.toFixed(1), y.toFixed(1), 3.2, i % 2 ? '#ffd43b' : '#ffffff', so(1.2)); }
@@ -1277,7 +1446,7 @@ const SCN = {
   classroom(a) {
     return Rc(0, 0, 360, 220, '#fff9db') + Rc(0, 184, 360, 36, '#e9b872')
       + Rc(18, 12, 222, 100, '#2f9e44', so(3) + ' rx="4"') + Rc(14, 110, 230, 8, '#c68b59', so(2))
-      + Tx(150, 42, 'ERP 101', 16, '#ffffff') + Rc(36, 60, 42, 22, 'none', 'stroke="#fff" stroke-width="2"') + Rc(106, 60, 42, 22, 'none', 'stroke="#fff" stroke-width="2"') + Rc(176, 60, 42, 22, 'none', 'stroke="#fff" stroke-width="2"')
+      + TxF(150, 42, 'ERP 101', 16, '#ffffff', 120) + Rc(36, 60, 42, 22, 'none', 'stroke="#fff" stroke-width="2"') + Rc(106, 60, 42, 22, 'none', 'stroke="#fff" stroke-width="2"') + Rc(176, 60, 42, 22, 'none', 'stroke="#fff" stroke-width="2"')
       + Tx(57, 76, 'GL', 11, '#fff') + Tx(127, 76, 'AP', 11, '#fff') + Tx(197, 76, 'AR', 11, '#fff') + Ln(80, 71, 102, 71, '#fff', 2) + Ln(150, 71, 172, 71, '#fff', 2)
       + Rc(262, 22, 80, 58, '#ffffff', so(2.5)) + Rc(270, 32, 64, 5, '#adb5bd') + Rc(270, 42, 50, 5, '#adb5bd') + Ci(326, 68, 9, '#ff5d73', so(2)) + Pg('320,74 318,90 326,84 334,90 332,74', '#ff5d73', so(1.5))
       + a(126, 62, 1.02)
@@ -1291,7 +1460,7 @@ const SCN = {
     const beer = (x, y) => Rc(x, y, 30, 36, '#fcc419', so(2.5) + ' rx="4"') + El(x + 15, y, 17, 7, '#ffffff', so(2)) + Pa(`M${x + 30},${y + 8} q12,0 12,10 q0,10 -12,10`, 'none', so(3));
     return Rc(0, 0, 360, 220, '#6d4430') + planks + Rc(0, 0, 360, 40, '#1c3d6e', so(3)) + Ln(120, 6, 120, 40, '#fff', 2) + Ln(240, 6, 240, 40, '#fff', 2) + Ci(180, 20, 10, 'none', 'stroke="#fff" stroke-width="3"')
       + lantern(52, 86) + lantern(310, 86)
-      + Rc(98, 52, 22, 56, '#fff3bf', so(1.5)) + Tx(109, 86, J('酒', 'BAR'), J(15, 9)) + Rc(236, 52, 22, 56, '#fff3bf', so(1.5)) + Tx(247, 86, J('鳥', 'BBQ'), J(15, 9))
+      + Rc(98, 52, 22, 56, '#fff3bf', so(1.5)) + TxF(109, 86, J('酒', 'BAR'), J(15, 9), OL, 19) + Rc(236, 52, 22, 56, '#fff3bf', so(1.5)) + TxF(247, 86, J('鳥', 'BBQ'), J(15, 9), OL, 19)
       + a(128, 58, 1.02)
       + Rc(-4, 160, 368, 14, '#e8b06a', so(3)) + Rc(0, 174, 360, 46, '#8a4b2a', so(3))
       + beer(58, 126) + beer(262, 126)
@@ -1304,7 +1473,7 @@ const SCN = {
       + Pa('M0,0 L72,0 Q60,110 80,220 L0,220 Z', '#c92a2a', so(3)) + Pa('M360,0 L288,0 Q300,110 280,220 L360,220 Z', '#c92a2a', so(3))
       + Pa('M24,0 Q18,110 30,220 M50,0 Q40,110 56,220 M336,0 Q342,110 330,220 M310,0 Q320,110 304,220', 'none', 'stroke="#a61e1e" stroke-width="2.5"')
       + Rc(0, 0, 360, 24, '#a61e4d', so(3)) + scallop
-      + Rc(116, 40, 128, 26, '#ffd43b', so(2.5) + ' rx="6"') + Tx(180, 59, '★ ' + banner + ' ★', 14)
+      + Rc(116, 40, 128, 26, '#ffd43b', so(2.5) + ' rx="6"') + TxF(180, 59, '★ ' + banner + ' ★', 14, OL, 118)
       + a(128, 64, 1.0)
       + Ln(262, 118, 262, 188, OL, 3) + El(262, 114, 6, 9, '#495057', so(2)) + Rc(248, 186, 28, 5, OL, ' rx="2"')
       + Rc(0, 186, 360, 34, '#8d5524', so(3));
@@ -1366,7 +1535,7 @@ const SCN = {
     let extra;
     if (o.deco === 'money') {
       let aw = ''; for (let i = 0; i < 6; i++) aw += Rc(230 + i * 18.3, 62, 18.3, 16, i % 2 ? '#ffffff' : '#e03131', so(1.5));
-      extra = Rc(234, 78, 104, 100, '#ffffff', so(3)) + aw + Rc(244, 86, 84, 22, '#e03131', so(2) + ' rx="4"') + Tx(286, 103, J('宝くじ', 'LOTTO'), 14, '#ffffff') + Rc(248, 116, 76, 40, '#fff3bf', so(2)) + Ci(286, 132, 10, '#adb5bd');
+      extra = Rc(234, 78, 104, 100, '#ffffff', so(3)) + aw + Rc(244, 86, 84, 22, '#e03131', so(2) + ' rx="4"') + TxF(286, 103, J('宝くじ', 'LOTTO'), 14, '#ffffff', 76) + Rc(248, 116, 76, 40, '#fff3bf', so(2)) + Ci(286, 132, 10, '#adb5bd');
     } else {
       extra = Ci(258, 166, 18, 'none', so(5)) + Ci(320, 166, 18, 'none', so(5)) + Pa('M258,166 L282,140 L310,140 L320,166 M276,140 L270,128 L284,128', 'none', 'stroke="#e03131" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"') + Rc(282, 128, 28, 10, '#495057', so(2) + ' rx="4"');
     }
@@ -1383,7 +1552,7 @@ const SCN = {
   cafe(a) {
     let bricks = ''; for (let y = 0; y < 170; y += 16) for (let x = (y / 16) % 2 ? -16 : 0; x < 360; x += 32) bricks += Rc(x, y, 30, 14, '#e8a87c', 'stroke="#c97a50" stroke-width="1"');
     return Rc(0, 0, 360, 220, '#d98f66') + bricks
-      + Rc(234, 16, 110, 84, OL, so(3) + ' rx="4"') + Tx(289, 42, 'MENU', 13, '#ffffff') + Rc(248, 52, 60, 3, '#ffffff', 'opacity=".7"') + Rc(248, 64, 76, 3, '#ffffff', 'opacity=".7"') + Rc(248, 76, 50, 3, '#ffffff', 'opacity=".7"')
+      + Rc(234, 16, 110, 84, OL, so(3) + ' rx="4"') + TxF(289, 42, 'MENU', 13, '#ffffff', 96) + Rc(248, 52, 60, 3, '#ffffff', 'opacity=".7"') + Rc(248, 64, 76, 3, '#ffffff', 'opacity=".7"') + Rc(248, 76, 50, 3, '#ffffff', 'opacity=".7"')
       + Ln(60, 0, 60, 30, OL, 2) + Ci(60, 36, 8, '#ffe066', so(2) + ' class="glow"') + Ln(160, 0, 160, 20, OL, 2) + Ci(160, 26, 8, '#ffe066', so(2) + ' class="glow"')
       + a(84, 56, 1.03)
       + Rc(-4, 164, 368, 12, '#8d6e63', so(3)) + Rc(8, 176, 344, 44, '#6d4c41', so(3))
@@ -1413,7 +1582,7 @@ const SCN = {
   vegas(a) {
     const g = uid();
     return skyGrad(g, '#2b0f54', '#5f3dc4') + Rc(0, 0, 360, 220, `url(#${g})`) + stars(20, 9, 60)
-      + Rc(18, 16, 128, 46, 'none', 'stroke="#ff6bcb" stroke-width="5" rx="10" class="glow"') + Tx(82, 48, 'CASINO', 20, '#ffd8f5')
+      + Rc(18, 16, 128, 46, 'none', 'stroke="#ff6bcb" stroke-width="5" rx="10" class="glow"') + TxF(82, 48, 'CASINO', 20, '#ffd8f5', 112)
       + Pg(starPts(196, 40, 24), 'none', 'stroke="#ffe066" stroke-width="4" class="glow"')
       + Rc(240, 54, 98, 136, '#e03131', so(3) + ' rx="12"') + Rc(252, 78, 74, 38, '#ffffff', so(2.5)) + Tx(264, 105, '7', 22, '#e03131') + Tx(289, 105, '7', 22, '#e03131') + Tx(314, 105, '7', 22, '#e03131')
       + Rc(256, 128, 66, 14, '#ffd43b', so(2)) + Ln(344, 92, 354, 64, OL, 3) + Ci(354, 60, 6, '#ffd43b', so(2))
@@ -1451,13 +1620,25 @@ const SCN = {
       + Pg(starPts(60, 60, 8), '#fff3bf', 'class="twinkle"') + Pg(starPts(300, 90, 10), '#fff3bf', 'class="twinkle" style="animation-delay:.5s"') + Pg(starPts(80, 160, 6), '#fff3bf', 'class="twinkle" style="animation-delay:1s"');
   },
 
+  welcome(a) {
+    const cols = ['#ff5d73', '#ffd43b', '#4dabf7', '#38d9a9', '#9775fa'];
+    const r = seeded(9); let conf = '';
+    for (let i = 0; i < 22; i++) conf += `<g class="fall" style="animation-delay:${(r() * 3).toFixed(1)}s">${Rc((r() * 360).toFixed(0), (r() * 120).toFixed(0), 5, 9, cols[i % 5])}</g>`;
+    return Rc(0, 0, 360, 220, '#e7f5ff') + Rc(0, 172, 360, 48, '#ced4da', so(3))
+      + Rc(20, 64, 70, 108, '#a5d8ff', so(2.5)) + Ln(55, 64, 55, 172, OL, 2) + Rc(270, 64, 70, 108, '#a5d8ff', so(2.5)) + Ln(305, 64, 305, 172, OL, 2)
+      + Rc(62, 12, 236, 38, '#ff5d73', so(3) + ' rx="8"') + TxF(180, 38, J('おかえり!', 'WELCOME BACK!'), 18, '#ffffff', 214)
+      + `<g class="spin-fast" style="transform-origin:318px 80px">${Pa('M300,94 Q302,68 332,62 Q338,66 334,72 Q312,76 310,96 Q304,100 300,94 Z', '#ff922b', so(2.2))}</g>`
+      + conf + person(42, 112, .9, '#748ffc') + person(318, 114, .9, '#63e6be')
+      + a(128, 62, 1.02);
+  },
+
   /* -------- endings -------- */
   retire(a, S) {
     let bunting = ''; const cols = ['#ff5d73', '#ffd43b', '#4dabf7', '#38d9a9', '#9775fa'];
     for (let i = 0; i < 15; i++) bunting += Pg(`${i * 25},6 ${i * 25 + 25},6 ${i * 25 + 12.5},26`, cols[i % 5], so(1.5));
     const r = seeded(5); let conf = ''; for (let i = 0; i < 30; i++) conf += Rc((r() * 360).toFixed(0), (r() * 150 + 30).toFixed(0), 5, 9, cols[i % 5], `transform="rotate(${(r() * 90).toFixed(0)})" class="fall" style="animation-delay:${(r() * 3).toFixed(1)}s;transform-box:fill-box"`);
     return Rc(0, 0, 360, 220, '#fff3bf') + Ln(0, 6, 360, 6, OL, 2) + bunting
-      + Rc(70, 34, 220, 32, '#ff5d73', so(3) + ' rx="8"') + Tx(180, 56, J('おつかれさまでした!', 'THANK YOU!'), 16, '#ffffff')
+      + Rc(70, 34, 220, 32, '#ff5d73', so(3) + ' rx="8"') + TxF(180, 56, J('おつかれさまでした!', 'THANK YOU!'), 16, '#ffffff', 204)
       + conf + person(40, 112, .9, '#748ffc') + person(322, 112, .9, '#63e6be')
       + a(122, 68, 1.02)
       + Rc(0, 186, 360, 34, '#e9b872', so(3))
@@ -1477,8 +1658,8 @@ const SCN = {
   rival(a) {
     let win = ''; for (let r = 0; r < 6; r++) for (let c = 0; c < 4; c++) win += Rc(214 + c * 30, 60 + r * 20, 22, 14, r % 2 ? '#a5d8ff' : '#d0ebff');
     return Rc(0, 0, 360, 220, '#e7f5ff') + cloud(40, 30, .7) + Rc(200, 10, 144, 182, '#364fc7', so(3)) + win
-      + Rc(224, 22, 96, 26, '#ffd43b', so(2.5) + ' rx="4"') + Tx(272, 41, 'NEW!', 15)
-      + Rc(160, 120, 30, 70, '#212529', so(2)) + Rc(144, 98, 62, 20, '#2f9e44', so(2) + ' rx="3"') + Tx(175, 113, 'EXIT →', 10, '#ffffff')
+      + Rc(224, 22, 96, 26, '#ffd43b', so(2.5) + ' rx="4"') + TxF(272, 41, 'NEW!', 15, OL, 86)
+      + Rc(160, 120, 30, 70, '#212529', so(2)) + Rc(144, 98, 62, 20, '#2f9e44', so(2) + ' rx="3"') + TxF(175, 113, 'EXIT →', 10, '#ffffff', 54)
       + a(58, 64, 1.0)
       + Rc(84, 146, 72, 46, '#e0a96d', so(2.5)) + Pg('84,146 70,136 98,136 112,146', '#d4935c', so(2)) + Pa('M120,146 Q110,124 124,112 Q132,126 120,146', '#40c057', so(1.8))
       + Rc(0, 192, 360, 28, '#adb5bd', so(3));
@@ -1515,7 +1696,7 @@ const SCN = {
   },
   ramen(a) {
     return Rc(0, 0, 360, 220, '#8d5524') + Rc(30, 8, 300, 58, '#1c3d6e', so(3)) + Ln(130, 30, 130, 66, '#ffffff', 2) + Ln(230, 30, 230, 66, '#ffffff', 2)
-      + Tx(180, 46, J('ラーメン', 'RAMEN'), 24, '#ffffff')
+      + TxF(180, 46, J('ラーメン', 'RAMEN'), 24, '#ffffff', 260)
       + El(330, 110, 16, 22, '#e03131', so(2.5) + ' class="glow"') + Tx(330, 116, J('ら', '麺'), 14, '#ffffff')
       + a(124, 58, 1.02, 'band')
       + Rc(-4, 166, 368, 12, '#e8b06a', so(3)) + Rc(0, 178, 360, 42, '#5c3d2e', so(3))
@@ -1536,7 +1717,7 @@ const SCN = {
     return Rc(0, 0, 360, 220, '#2b2140') + Ln(0, 12, 360, 12, '#f06595', 4, 'class="glow"') + Ln(0, 18, 360, 18, '#4dabf7', 3, 'class="glow"')
       + Ci(48, 76, 30, 'none', 'stroke="#fff3bf" stroke-width="10" class="glow"') + Ln(48, 106, 48, 172, '#adb5bd', 3)
       + Rc(224, 36, 120, 78, OL, so(2) + ' rx="8"') + Rc(231, 43, 106, 64, '#e03131', ' rx="6"') + Pg('274,58 274,92 302,75', '#ffffff')
-      + Tx(284, 136, '1,000,000', 17, '#ffd43b') + Tx(284, 152, '👍 ❤️ 🔔', 12, '#ffffff')
+      + TxF(284, 136, '1,000,000', 17, '#ffd43b', 112) + Tx(284, 152, '👍 ❤️ 🔔', 12, '#ffffff')
       + a(108, 56, 1.02, 'headset')
       + Rc(-4, 170, 368, 12, '#495057', so(3)) + Rc(8, 182, 344, 38, '#343a40', so(3))
       + Ln(206, 168, 214, 140, '#adb5bd', 3) + El(214, 134, 7, 10, '#495057', so(2));
@@ -1586,7 +1767,7 @@ let S = null, PLAYER = store.get('sg_name', ''), shownRev = 0;
 function fill(s) { return String(s).replace(/\{(\w+)\}/g, (m, k) => (S && S.tok && S.tok[k]) ? tt(S.tok[k]) : (k === 'company' ? tt(CONFIG.company) : m)); }
 const T = (o) => fill(tt(o));
 function tap(el) { return new Promise(res => { const h = (e) => { el.removeEventListener('click', h); res(e); }; el.addEventListener('click', h); }); }
-function screen(html, cls = '') { $app.innerHTML = `<div class="screen ${cls}">${html}</div>`; window.scrollTo(0, 0); return $app.firstElementChild; }
+function screen(html, cls = '') { $app.innerHTML = `<div class="screen ${cls}">${html}</div>`; window.scrollTo(0, 0); fitTexts($app); return $app.firstElementChild; }
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 1900); }
 
 /* ---------- formatting ---------- */
@@ -1610,7 +1791,7 @@ const signed = (v, f = (x) => x) => (v > 0 ? '+' : v < 0 ? '−' : '') + f(Math.
 const yearsStr = (n) => L === 'ja' ? `${n}年` : `${n} yr${n === 1 ? '' : 's'}`;
 const ageStr = (a) => L === 'ja' ? `${a}歳` : `age ${a}`;
 const lvName = (i, short) => short ? (L === 'ja' ? LEVELS[i].sj : LEVELS[i].se) : tt(LEVELS[i]);
-const yearLabel = () => L === 'ja' ? `${S.yearIdx + 1}年目 · ${S.age}歳` : `Year ${S.yearIdx + 1} · Age ${S.age}`;
+const yearLabel = () => { const h = tt(S.half ? UI.h2 : UI.h1); return L === 'ja' ? `${S.yearIdx + 1}年目 ${h} · ${S.age}歳` : `Year ${S.yearIdx + 1} ${h} · Age ${S.age}`; };
 
 /* ---------- sound ---------- */
 const SFX = {
@@ -1687,7 +1868,7 @@ const LB = {
 const BOARDS = [
   { id: 'tenure', icon: '🕰️', lb: UI.lbTenure, cmp: (a, b) => b.years - a.years || b.revenue - a.revenue, val: r => yearsStr(r.years) },
   { id: 'revenue', icon: '🏢', lb: UI.lbRevenue, cmp: (a, b) => b.revenue - a.revenue || b.years - a.years, val: r => money(r.revenue) },
-  { id: 'peak', icon: '👑', lb: UI.lbPeak, cmp: (a, b) => b.peak - a.peak || a.yearsToPeak - b.yearsToPeak || b.revenue - a.revenue, val: r => lvName(r.peak, true), sub: r => !r.peak ? '' : L === 'ja' ? `${r.yearsToPeak}${tt(UI.inYear)}` : `${r.yearsToPeak} ${tt(UI.inYear)}` },
+  { id: 'peak', icon: '👑', lb: UI.lbPeak, cmp: (a, b) => b.peak - a.peak || a.yearsToPeak - b.yearsToPeak || b.revenue - a.revenue, val: r => lvName(r.peak, true), sub: r => !r.peak ? '' : L === 'ja' ? `${r.yearsToPeak}${tt(UI.inYear)}` : tt(UI.inYear).replace('{n}', r.yearsToPeak) },
   { id: 'happy', icon: '😊', lb: UI.lbHappy, cmp: (a, b) => b.happy - a.happy || b.years - a.years, val: r => r.happy + 'pt' },
 ];
 const pkey = (s) => String(s || '').trim().toLowerCase();
@@ -1783,7 +1964,7 @@ async function wheelScreen(g) {
   screen(`<div class="hint">🎡 ${tt(UI.wheelTitle)}</div><div class="wheel-wrap">${wheelSVG()}</div><div class="wres" id="wres"></div><button class="btn big primary pulse" id="spin">🎰 ${tt(UI.spin)}</button>`, 'wheel-screen');
   const btn = $('#spin'); await tap(btn); SFX.tap();
   btn.disabled = true; btn.classList.remove('pulse'); btn.style.opacity = .5;
-  const n = MODULE_KEYS.length, idx = Math.floor(Math.random() * n), k = MODULE_KEYS[idx];
+  const n = MODULE_KEYS.length, k = rollModule(), idx = MODULE_KEYS.indexOf(k);
   const rot = 360 * 6 + (360 - idx * 360 / n) + (Math.random() - .5) * (300 / n);
   const w = $('#wheelRot');
   requestAnimationFrame(() => { w.style.transform = `rotate(${rot}deg)`; });
@@ -1836,31 +2017,49 @@ async function career() {
   while (true) {
     if (S.yearIdx > 0) S.age++;
     if (S.age >= RETIRE()) return endingScreen('retire');
-    let ev = pickEvent(S);
-    if (ev === 'quiet') {
-      const ye = endYear(S, '☕');
-      await quietYear(ye);
-      if (ye.end) return endingScreen(ye.end);
-      if (ye.promo) await promoScreen(ye.promo);
-      S.yearIdx++; continue;
+    let away = false;
+    for (let half = 0; half < 2 && !away; half++) {
+      S.half = half;
+      let ev = pickEvent(S);
+      if (ev === 'quiet') {
+        const ye = half === 1 ? endYear(S, '☕') : null;
+        await quietYear(ye);
+        if (ye && ye.end) return endingScreen(ye.end);
+        if (ye && ye.promo) await promoScreen(ye.promo);
+        continue;
+      }
+      while (ev) {
+        rollTokens(S);
+        const { ch, res, deltas } = await eventCard(ev);
+        if (res.promote) res.promoInfo = promote(S, res.promote);
+        if (res.end) {
+          const bm = tryBoomerang(S, res.end);
+          await outcome(res, deltas, null, bm ? 'next' : 'end');
+          if (bm) { await boomerangScreen(bm); away = true; break; }
+          return endingScreen(res.end);
+        }
+        if (res.next) { await outcome(res, deltas, null, 'next'); ev = EVMAP[res.next]; continue; }
+        const ye = half === 1 ? endYear(S, ch.icon) : null;
+        await outcome(res, deltas, ye, ye && ye.end ? 'end' : 'year');
+        if (res.promoInfo) await promoScreen(res.promoInfo);
+        if (ye && ye.end) return endingScreen(ye.end);
+        if (ye && ye.promo) await promoScreen(ye.promo);
+        ev = null;
+      }
     }
-    let endId = null;
-    while (ev) {
-      rollTokens(S);
-      const { ch, res, deltas } = await eventCard(ev);
-      if (res.promote) res.promoInfo = promote(S, res.promote);
-      if (res.end) { endId = res.end; await outcome(res, deltas, null, 'end'); break; }
-      if (res.next) { await outcome(res, deltas, null, 'next'); ev = EVMAP[res.next]; continue; }
-      const ye = endYear(S, ch.icon);
-      await outcome(res, deltas, ye, ye.end ? 'end' : 'year');
-      if (res.promoInfo) await promoScreen(res.promoInfo);
-      if (ye.end) { endId = ye.end; break; }
-      if (ye.promo) await promoScreen(ye.promo);
-      ev = null;
-    }
-    if (endId) return endingScreen(endId);
     S.yearIdx++;
   }
+}
+async function boomerangScreen(bm) {
+  SFX.fan(); confetti(50);
+  const t = bm.kind === 'startup' ? UI.boomerStartup : UI.boomerPoached;
+  const el = screen(`<div class="scene end-hero">${sceneSVG('welcome', S, { mood: 'happy', age: bm.from + bm.yrs })}</div>
+    <div class="later">⏳ ${esc(tt(UI.yearsLater).replace('{n}', bm.yrs))}</div>
+    <div class="end-title">🪃 ${tt(UI.boomer)}</div><div class="end-sub">${esc(tt(t))}</div>
+    <div class="who">${flagSVG(S.nat, 15)} ${esc(tt(S.name))} · ${ageStr(bm.from + bm.yrs)}</div>
+    <div class="deltas"><span class="d good">🔥 ↑</span><span class="d good">😰 ↓</span><span class="d bad">⭐ ${S.rep}</span><span class="d good">${bm.kind === 'startup' ? '📊 ↑ 💬 ↑' : '💻 ↑ 📊 ↑'}</span></div>
+    <button class="btn big primary pulse" id="nx">▶ ${tt(UI.cont)}</button>`, 'boomer');
+  await tap($('#nx', el)); SFX.tap();
 }
 
 function choiceHTML(c, i) {
@@ -1924,13 +2123,19 @@ function floaters(deltas) {
     box.appendChild(s);
   });
 }
+function reviewHTML(ye) {
+  return `<div class="review"><div class="stamp g${ye.grade}">${ye.grade}</div><div class="rv">
+    <div class="rv-h">📋 ${tt(UI.review)}</div>
+    <div>🏢 ${tt(UI.yearRev)} <b>+${money(ye.rev)}</b></div>
+    <div>💴 ${tt(UI.bonus)} <b>+${money(ye.bonus)}</b></div></div></div>`;
+}
 async function outcome(res, deltas, ye, mode) {
   updateHUD(); floaters(deltas);
   if (res.success === true) SFX.ok(); else if (res.success === false) SFX.ng(); else SFX.coin();
   const resLine = res.success === true ? `<div class="res ok">✔ ${tt(UI.success)}</div>` : res.success === false ? `<div class="res ng">✘ ${tt(UI.fail)}</div>` : '';
   const txt = res.text ? `<div class="res-txt">${esc(T(res.text))}</div>` : '';
   const chips = deltas.map(deltaChip).join('');
-  const sum = ye ? `<div class="yr-sum"><span>🏢 ${tt(UI.yearRev)} <b>+${money(ye.rev)}</b></span></div>` : '';
+  const sum = ye ? reviewHTML(ye) : '';
   const lbl = mode === 'end' ? `🎬 ${tt(UI.toEnding)}` : mode === 'next' ? `▶ ${tt(UI.cont)}` : `▶ ${tt(UI.next)}`;
   $('#choices').innerHTML = `<div class="card outcome">${resLine}${txt}${chips ? `<div class="deltas">${chips}</div>` : ''}${sum}<button class="btn primary big" id="nx">${lbl}</button></div>`;
   await tap($('#nx')); SFX.tap();
@@ -1940,15 +2145,15 @@ async function quietYear(ye) {
   const el = screen(`${hudHTML()}
     <div class="scene">${sceneSVG('office', S, {})}<div class="yr-flag">${yearLabel()}</div></div>
     <div class="ev-title">☕ ${tt(UI.quiet)}</div>
-    <div class="quiet-grid">${picks.map(q => `<div class="card qc"><b>${q.icon}</b><span class="n" data-n="${ri(q.min, q.max)}">0</span><br><small>${tt(q)}</small></div>`).join('')}</div>
-    <div class="card outcome"><div class="yr-sum" style="border:0;padding:0"><span>🏢 ${tt(UI.yearRev)} <b>+${money(ye.rev)}</b></span></div>
-    <button class="btn primary big" id="nx">${ye.end ? '🎬 ' + tt(UI.toEnding) : '⏩ ' + tt(UI.next)}</button></div>`, 'year');
+    <div class="quiet-grid">${picks.map(q => `<div class="card qc"><b>${q.icon}</b><span class="n" data-n="${Math.round(ri(q.min, q.max) / 2)}">0</span><br><small>${tt(q)}</small></div>`).join('')}</div>
+    <div class="card outcome">${ye ? reviewHTML(ye) : ''}
+    <button class="btn primary big" id="nx">${ye && ye.end ? '🎬 ' + tt(UI.toEnding) : '⏩ ' + tt(UI.cont)}</button></div>`, 'year');
   const t0 = performance.now();
   const f = (now) => { const u = Math.min(1, (now - t0) / 900); $$('.qc .n', el).forEach(n => { n.textContent = Math.round(+n.dataset.n * u).toLocaleString(); }); if (u < 1) requestAnimationFrame(f); };
   requestAnimationFrame(f);
   setTimeout(updateHUD, 200); SFX.coin();
-  if (ye.end || ye.promo) await tap($('#nx'));
-  else await Promise.race([tap($('#nx')), wait(2800)]);
+  if (ye && (ye.end || ye.promo)) await tap($('#nx'));
+  else await Promise.race([tap($('#nx')), wait(ye ? 3600 : 2600)]);
   SFX.tap();
 }
 async function promoScreen(p) {
@@ -1988,7 +2193,7 @@ function bindChart() {
     const i = clamp(Math.floor((x - ml) / bw), 0, n - 1), h = H[i];
     $$('.bar-r', svg).forEach(b => b.style.opacity = +b.dataset.i === i ? 1 : .45);
     tip.style.display = 'block'; tip.style.left = ((ml + i * bw + bw / 2) / W * r.width) + 'px'; tip.style.top = '34px';
-    tip.innerHTML = `${ageStr(h.age)} · ${lvName(h.lv, true)}<br>🏢 ${money(h.rev)} ${h.icon}`;
+    tip.innerHTML = h.away ? `${ageStr(h.age)} · 🪃 ${tt(UI.away)}` : `${ageStr(h.age)} · ${lvName(h.lv, true)}<br>🏢 ${money(h.rev)} ${h.icon}`;
   };
   const hide = () => { tip.style.display = 'none'; $$('.bar-r', svg).forEach(b => b.style.opacity = 1); };
   svg.addEventListener('pointerdown', show); svg.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' || e.buttons) show(e); });
@@ -1996,12 +2201,13 @@ function bindChart() {
 }
 function stripHTML(endId) {
   const H = S.hist;
-  return H.map((h, i) => `<div class="yc ${i > 0 && h.lv > H[i - 1].lv ? 'promo-y' : ''}">${h.age}<b>${h.icon}</b>${i > 0 && h.lv > H[i - 1].lv ? '⬆' : '&nbsp;'}</div>`).join('')
+  return H.map((h, i) => h.away ? `<div class="yc away">${h.age}<b>🪃</b>${tt(UI.away)}</div>`
+    : `<div class="yc ${i > 0 && h.lv > H[i - 1].lv ? 'promo-y' : ''}">${h.age}<b>${h.icon}</b>${i > 0 && h.lv > H[i - 1].lv ? '⬆' : '&nbsp;'}</div>`).join('')
     + `<div class="yc promo-y">${S.age}<b>${ENDINGS[endId].icon}</b>🏁</div>`;
 }
 async function endingScreen(endId) {
   const E = ENDINGS[endId];
-  if (endId === 'startup') S.startupWin = rnd() < 0.25 + S.luck / 400;
+  if (endId === 'startup' && S.startupWin === undefined) S.startupWin = rnd() < 0.25 + S.luck / 400;
   const v = (endId === 'startup' && !S.startupWin) ? E.alt : E;
   const title = T(v.title), sub = T(v.sub);
   const acc = endId === 'retire' ? (S.peak === 7 ? 'crown bouquet' : 'bouquet') : '';
