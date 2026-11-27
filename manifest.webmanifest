@@ -1,0 +1,11 @@
+{
+  "name": "新卒ガチャ 〜入社から定年まで〜",
+  "short_name": "新卒ガチャ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff6e9",
+  "theme_color": "#ff5d73",
+  "icons": [{ "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }]
+}

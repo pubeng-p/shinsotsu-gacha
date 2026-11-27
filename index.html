@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#ff5d73">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="新卒ガチャ">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <title>新卒ガチャ / Shinsotsu Gacha</title>
 <script>
 /* =====================================================================
@@ -91,12 +97,17 @@ const CONFIG = {
 </script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M8 50a42 42 0 0 1 84 0z' fill='%23ff5d73' stroke='%232b2d42' stroke-width='6'/%3E%3Cpath d='M8 50a42 42 0 0 0 84 0z' fill='%23fff' stroke='%232b2d42' stroke-width='6'/%3E%3C/svg%3E">
 <style>
-:root{--ink:#2b2d42;--bg:#fff6e9;--pink:#ff5d73;--yellow:#ffd166;--green:#20c997;--blue:#4dabf7;--purple:#9775fa;--muted:#6c727f;--good:#2b8a3e;--bad:#c92a2a}
+:root{--rb:16px;--ink:#2b2d42;--bg:#fff6e9;--pink:#ff5d73;--yellow:#ffd166;--green:#20c997;--blue:#4dabf7;--purple:#9775fa;--muted:#6c727f;--good:#2b8a3e;--bad:#c92a2a}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",Meiryo,system-ui,sans-serif}
 body{background-image:radial-gradient(#ffe0bd 1.6px,transparent 1.6px);background-size:18px 18px;min-height:100dvh;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 #app{max-width:460px;margin:0 auto;min-height:100dvh;position:relative;overflow-x:hidden}
-.screen{display:flex;flex-direction:column;gap:12px;padding:12px 14px calc(22px + env(safe-area-inset-bottom));min-height:100dvh;animation:fadeIn .25s ease}
+.screen{display:flex;flex-direction:column;gap:12px;padding:12px 14px calc(var(--rb) + 28px + env(safe-area-inset-bottom));min-height:100dvh;animation:fadeIn .25s ease}
+/* iPhone Safari: its floating bottom toolbar covers ~90px and steals taps there */
+html.ios-safari{--rb:92px}
+html.standalone .screen{padding-top:calc(12px + env(safe-area-inset-top))}
+.scene{transition:height .25s ease}
+.a2hs{text-align:center;font-size:12px;font-weight:900;color:var(--muted);background:#fff;border:2px dashed #ced4da;border-radius:12px;padding:6px 8px}
 button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;touch-action:manipulation}
 .btn{border:3px solid var(--ink);border-radius:16px;background:#fff;padding:12px 16px;font-weight:900;font-size:17px;box-shadow:0 5px 0 var(--ink);transition:transform .06s,box-shadow .06s;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.2}
 .btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
@@ -151,7 +162,7 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appeara
 .rar{position:absolute;top:10px;left:10px;font-weight:900;font-size:26px;padding:2px 12px;border:3px solid var(--ink);border-radius:12px;color:#fff;-webkit-text-stroke:1px var(--ink);paint-order:stroke fill;box-shadow:0 3px 0 var(--ink);z-index:2}
 .rar.UR{background:linear-gradient(90deg,#ff5d73,#ffd43b,#69db7c,#4dabf7,#9775fa);animation:hue 3s linear infinite}
 .portrait{border:3px solid var(--ink);border-radius:16px;display:flex;justify-content:center;align-items:flex-end;height:200px;overflow:hidden;position:relative}
-.portrait .av{height:190px;width:auto;position:relative;z-index:1}
+.portrait .av{height:calc(100% - 10px);max-height:190px;width:auto;position:relative;z-index:1}
 .gname{font-size:26px;font-weight:900;text-align:center;margin:10px 0 6px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
 .chip{display:inline-flex;align-items:center;gap:5px;border:2.5px solid var(--ink);border-radius:999px;padding:3px 10px;font-weight:900;font-size:14px;background:#fff}
@@ -193,7 +204,7 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appeara
 .yr-flag{position:absolute;top:8px;left:8px;background:var(--ink);color:#fff;font-weight:900;font-size:13px;padding:3px 10px;border-radius:999px}
 .floaters{position:absolute;inset:0;pointer-events:none}
 .fl{position:absolute;font-weight:900;font-size:22px;-webkit-text-stroke:1px #fff;paint-order:stroke fill;animation:floatUp 1.6s ease-out forwards;white-space:nowrap}
-.ev-title{font-size:22px;font-weight:900;text-align:center;line-height:1.3;padding:0 4px;animation:popIn .35s ease}
+.ev-title{font-size:clamp(18px,5.6vw,22px);font-weight:900;text-align:center;line-height:1.3;padding:0 4px;animation:popIn .35s ease;line-break:strict;text-wrap:balance}
 .choices{display:grid;gap:10px}
 .choice{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;text-align:left;gap:8px;border:3px solid var(--ink);border-radius:18px;background:#fff;padding:10px 12px;font-weight:900;font-size:18px;box-shadow:0 5px 0 var(--ink);transition:transform .06s,box-shadow .06s;animation:slideUp .35s cubic-bezier(.3,1.3,.6,1) backwards}
 .choice:nth-child(2){animation-delay:.06s}.choice:nth-child(3){animation-delay:.12s}
@@ -230,7 +241,7 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appeara
 .ttl{font-size:24px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
 .ttl-ic{font-size:34px}
 .report-ov{align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px}
-.report-box{width:100%;max-width:460px;display:grid;gap:10px;padding-bottom:calc(30px + env(safe-area-inset-bottom));margin:0 auto}
+.report-box{width:100%;max-width:460px;display:grid;gap:10px;padding-bottom:calc(var(--rb) + 20px + env(safe-area-inset-bottom));margin:0 auto}
 .rp-bar{display:flex;align-items:center;justify-content:space-between;color:#fff;font-size:18px}
 .rp-bar .btn{color:var(--ink)}
 .rp-img-wrap{overflow:hidden;padding:0;min-height:200px;display:flex;align-items:center;justify-content:center}
@@ -372,6 +383,16 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appeara
 @keyframes shakeX{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
 @keyframes dangerPulse{0%,100%{opacity:1}50%{opacity:.45}}
 @keyframes confetti{to{transform:translateY(110vh) rotate(720deg)}}
+/* short screens (iPhone SE, landscape-ish browsers): tighter layout */
+@media (max-height:680px){
+  .screen{gap:8px;padding-top:8px}
+  .hud{padding:6px 8px;gap:2px 8px}.hud .head{width:46px;height:46px}.hud .l1{font-size:13px}
+  .ev-title{font-size:18px}
+  .choices{gap:8px}.choice{padding:7px 10px;font-size:16px;border-radius:15px}.choice .ic{font-size:26px}
+  .outcome{padding:9px;gap:7px}.res{font-size:22px}.btn.big{font-size:19px;padding:11px}
+  .how{display:none}.logo h1{font-size:40px}.logo h1.en{font-size:32px}
+  .status{font-size:11px}
+}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important}}
 </style>
 </head>
@@ -595,6 +616,7 @@ const UI = {
   saveImg: { ja: '画像を保存', en: 'Save image' },
   longPress: { ja: '画像を長押ししても保存できます', en: 'You can also long-press the image to save it' },
   close: { ja: '閉じる', en: 'Close' },
+  a2hs: { ja: '📲 共有ボタン →「ホーム画面に追加」で全画面プレイ', en: '📲 Tip: Share → "Add to Home Screen" for full-screen play' },
   tapRow: { ja: '📜 タップで人生レポート', en: '📜 Tap a row to see the life report' },
 };
 
@@ -2447,7 +2469,45 @@ let S = null, PLAYER = store.get('sg_name', ''), shownRev = 0;
 function fill(s) { return String(s).replace(/\{(\w+)\}/g, (m, k) => (S && S.tok && S.tok[k]) ? tt(S.tok[k]) : (k === 'company' ? tt(CONFIG.company) : m)); }
 const T = (o) => fill(tt(o));
 function tap(el) { return new Promise(res => { const h = (e) => { el.removeEventListener('click', h); res(e); }; el.addEventListener('click', h); }); }
-function screen(html, cls = '') { $app.innerHTML = `<div class="screen ${cls}">${html}</div>`; window.scrollTo(0, 0); fitTexts($app); return $app.firstElementChild; }
+function screen(html, cls = '') { $app.innerHTML = `<div class="screen ${cls}">${html}</div>`; window.scrollTo(0, 0); fitTexts($app); fitScreen(); return $app.firstElementChild; }
+
+/* ---------- fit each screen above Safari's bottom toolbar ----------
+   iPhone Safari's floating toolbar covers the bottom of the page and steals taps there.
+   We keep a no-tap zone at the bottom (--rb) and shrink the screen's picture so every button fits above it. */
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const STANDALONE = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+if (IOS && !STANDALONE) document.documentElement.classList.add('ios-safari');
+if (STANDALONE) document.documentElement.classList.add('standalone');
+const FLEX = [['.screen.year .scene', 120], ['.screen.boomer .scene', 130], ['.screen.title .machine', 140], ['.screen.gacha .machine', 190], ['.screen.wheel-screen .wheel', 210], ['.screen.card-screen .portrait', 130]];
+const viewH = () => (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+const bottomReserve = () => (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rb')) || 16);
+const safeLimit = () => viewH() - bottomReserve() - 8;   // lowest y (in the viewport) that is safe to tap
+function fitScreen() {
+  const el = $app.firstElementChild; if (!el) return;
+  let flex = null, min = 120;
+  for (const [sel, m] of FLEX) { const f = $app.querySelector(sel); if (f) { flex = f; min = m; break; } }
+  if (!flex) return;
+  flex.style.height = ''; flex.style.width = ''; flex.style.aspectRatio = '';
+  const last = el.lastElementChild; if (!last) return;
+  const over = last.getBoundingClientRect().bottom + window.scrollY - safeLimit();
+  if (over > 1) {
+    const h = Math.max(min, flex.getBoundingClientRect().height - over);
+    flex.style.height = h + 'px';
+    if (flex.tagName.toLowerCase() === 'svg') flex.style.width = 'auto';
+    else if (flex.classList.contains('scene')) flex.style.aspectRatio = 'auto';
+  }
+}
+/* if something still can't fit, scroll just enough to lift the target button above the toolbar */
+const layoutBottom = (el) => { let y = el.offsetHeight; for (let n = el; n; n = n.offsetParent) y += n.offsetTop; return y - window.scrollY; };  // ignores entry animations
+function ensureVisible(target, smooth = false) {
+  if (!target) return;
+  const b = layoutBottom(target), lim = safeLimit();
+  if (b > lim) window.scrollBy({ top: b - lim, behavior: smooth ? 'smooth' : 'auto' });
+}
+let _fitT = 0;
+const refit = () => { clearTimeout(_fitT); _fitT = setTimeout(() => { fitScreen(); }, 150); };
+window.addEventListener('resize', refit);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', refit);
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 1900); }
 
 /* ---------- formatting ---------- */
@@ -2567,7 +2627,8 @@ function titleScreen() {
     <div class="how"><div class="st"><b>🎰</b>${tt(UI.how1)}</div><div class="ar">▶</div><div class="st"><b>🤔</b>${tt(UI.how2)}</div><div class="ar">▶</div><div class="st"><b>🏆</b>${tt(UI.how3)}</div></div>
     <button class="btn big primary pulse" id="start">▶ ${tt(UI.start)}</button>
     <button class="btn yellow" id="lb">🏆 ${tt(UI.ranking)}</button>
-    <div class="company">${esc(tt(CONFIG.company))}</div>`, 'title');
+    <div class="company">${esc(tt(CONFIG.company))}</div>
+    ${IOS && !STANDALONE ? `<div class="a2hs">${tt(UI.a2hs)}</div>` : ''}`, 'title');
   $('#lang').onclick = () => { L = L === 'ja' ? 'en' : 'ja'; store.set('sg_lang', L); document.documentElement.lang = L; SFX.tap(); titleScreen(); };
   $('#snd').onclick = () => { SFX.on = !SFX.on; store.set('sg_sfx', SFX.on); SFX.tap(); titleScreen(); };
   $('#start').onclick = async () => { SFX.init(); SFX.tap(); if (await askName()) gachaScreen(); };
@@ -2636,6 +2697,7 @@ function cardScreen(g) {
       <div class="gname">${esc(tt(g.name))}</div><div class="chips">${gradChips(g)}</div>
       <div class="stats">${STAT_KEYS.map(k => `<div class="stat"><span class="ic">${ICON[k]}</span><span>${tt(UI[k])}</span><div class="bar"><i style="width:0;background:${STATCOL[k]}" data-w="${g.stats[k]}"></i></div><span class="v">${g.stats[k]}</span></div>`).join('')}</div></div>
     <button class="btn big primary pulse" id="nx">🎡 ${tt(UI.toWheel)}</button>`, 'card-screen');
+  ensureVisible($('#nx'));
   setTimeout(() => $$('.bar>i', el).forEach(i => { i.style.width = i.dataset.w + '%'; }), 80);
   if (['SSR', 'UR'].includes(g.rarity)) confetti(60);
   $('#nx').onclick = () => { SFX.tap(); wheelScreen(g); };
@@ -2655,6 +2717,7 @@ async function wheelScreen(g) {
   const m = MODULES[k];
   $('#wres').innerHTML = `<span class="big">${m.icon}</span><span>${tt(m)}</span>${m.majors.includes(g.major) ? `<span class="chip">✨ ${L === 'ja' ? '適性あり' : 'Great fit'}</span>` : ''}`;
   btn.disabled = false; btn.style.opacity = 1; btn.classList.add('pulse'); btn.innerHTML = '🏢 ' + tt(UI.join);
+  fitScreen(); ensureVisible(btn);
   await tap(btn); SFX.tap();
   buildEventMap(); S = newState(g, k); shownRev = 0;
   career();
@@ -2776,6 +2839,7 @@ async function eventCard(ev) {
     <div class="scene ${gold ? 'gold' : ''}">${sceneSVG(ev.scene, S, { deco: ev.deco, id: ev.id })}<div class="yr-flag">${yearLabel()}</div>${gold ? `<div class="ssr-tag">✨ ${tt(UI.ssr)} ✨</div>` : ''}<div class="floaters" id="fl"></div></div>
     <div class="ev-title">${esc(T(ev.title))}</div>${tipLine()}
     <div class="choices" id="choices">${ev.choices.map(choiceHTML).join('')}</div>`, 'year');
+  ensureVisible($('.choice:last-child', el));
   if (gold) { SFX.fan(); confetti(40); }
   const ch = await new Promise(res => $$('.choice', el).forEach(b => { b.onclick = () => res(ev.choices[+b.dataset.i]); }));
   SFX.tap();
@@ -2794,6 +2858,7 @@ function timingGame(p) {
   const box = $('#choices'), z0 = Math.random() * (1 - p);
   box.innerHTML = `<div class="card gauge-box tapzone"><div class="gauge"><div class="zone" style="left:${(z0 * 100).toFixed(1)}%;width:${(p * 100).toFixed(1)}%"></div><div class="needle" id="needle"></div></div>
     <div class="gauge-lbl pulse">👆 ${tt(UI.tapStop)}</div><div class="status">🎲 ${Math.round(p * 100)}%</div></div>`;
+  fitScreen();
   const nd = $('#needle'), period = 700 + p * 900, t0 = performance.now();
   let stopped = false, pos = 0, lastHalf = -1;
   return new Promise(res => {
@@ -2854,6 +2919,7 @@ async function outcome(res, deltas, ye, mode, streak) {
   const stk = streak ? `<div class="streak">🔥×${streak.n} ${tt(UI.streak)}</div>` : '';
   const lbl = mode === 'end' ? `🎬 ${tt(UI.toEnding)}` : mode === 'next' ? `▶ ${tt(UI.cont)}` : `▶ ${tt(UI.next)}`;
   $('#choices').innerHTML = `<div class="card outcome">${resLine}${stk}${txt}${chips ? `<div class="deltas">${chips}</div>` : ''}${sum}<button class="btn primary big" id="nx">${lbl}</button></div>`;
+  fitScreen(); ensureVisible($('#nx'), true);
   await tap($('#nx')); SFX.tap();
 }
 async function quietYear(ye) {
@@ -2864,6 +2930,7 @@ async function quietYear(ye) {
     <div class="quiet-grid">${picks.map(q => `<div class="card qc"><b>${q.icon}</b><span class="n" data-n="${Math.round(ri(q.min, q.max) / 2)}">0</span><br><small>${tt(q)}</small></div>`).join('')}</div>
     <div class="card outcome">${ye ? reviewHTML(ye) : ''}
     <button class="btn primary big" id="nx">${ye && ye.end ? '🎬 ' + tt(UI.toEnding) : '⏩ ' + tt(UI.cont)}</button></div>`, 'year');
+  ensureVisible($('#nx', el));
   const t0 = performance.now();
   const f = (now) => { const u = Math.min(1, (now - t0) / 900); $$('.qc .n', el).forEach(n => { n.textContent = Math.round(+n.dataset.n * u).toLocaleString(); }); if (u < 1) requestAnimationFrame(f); };
   requestAnimationFrame(f);

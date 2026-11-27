@@ -30,6 +30,8 @@
 
 右上の **EN** ボタンで英語表示に切り替えられます。🔊 は効果音のオン・オフです。
 
+📲 **iPhoneのおすすめ**:Safariの共有ボタン →「ホーム画面に追加」で、アプリのように全画面で遊べます(Androidはメニュー →「ホーム画面に追加」)。
+
 ---
 
 ## English
@@ -39,6 +41,8 @@
 **How to play:** tap the gacha handle to roll your grad → spin the team roulette → pick a choice on each event card (**🎲 %** choices are a timing game: tap to stop the needle in the green zone; **🚪** = leaves the company; 3 successes in a row = 🔥 bonus; ✨ SSR events are rare jackpots) → get an S–D grade and a bonus at each year-end review, and get promoted → see your ending, your 🎖️ career title, and your place on the leaderboard → open your **📜 life report**: one image with your career highlights and a (totally fake) AI career review, grades and advice. Save it and take it home! Tap any leaderboard row to see other players' reports.
 
 **Meters:** keep 🔥 motivation and ⭐ rating up, and 😰 stress down (100 = burnout).
+
+**Tip:** on iPhone, tap Safari's Share button → "Add to Home Screen" to play full-screen like an app (Android: menu → "Add to Home screen").
 
 **Leaderboard:** 🕰️ years at the company · 🏢 revenue for the company · 👑 highest title (faster wins ties) · 😊 happiness.
 
